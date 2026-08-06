@@ -23,11 +23,18 @@ const { setIO } = require('./socket/ioInstance');
 const app = express();
 const httpServer = http.createServer(app);
 
+const allowedOrigins = (origin, callback) => {
+  // Allow requests with no origin (like mobile apps, curl, or server-to-server) or any origin dynamically
+  callback(null, true);
+};
+
+const corsOptions = {
+  origin: allowedOrigins,
+  credentials: true,
+};
+
 const io = new Server(httpServer, {
-  cors: {
-    origin: process.env.CLIENT_URL || '*',
-    methods: ['GET', 'POST'],
-  },
+  cors: corsOptions,
   transports: ['websocket', 'polling'],
 });
 
@@ -35,7 +42,7 @@ const io = new Server(httpServer, {
 setIO(io);
 
 // Middleware
-app.use(cors({ origin: process.env.CLIENT_URL || '*', credentials: true }));
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Rate limiting
