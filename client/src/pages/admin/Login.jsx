@@ -21,7 +21,7 @@ export default function AdminLogin() {
       .then(({ data }) => { if (!data.exists) setMode('setup'); })
       .catch((err) => {
         if (!err.response) {
-          setError('Cannot connect to backend server. Please make sure the backend server is running on http://localhost:5000.');
+          setError('Backend server is waking up or unreachable. Please wait 10 seconds and refresh the page.');
         }
       })
       .finally(() => setChecking(false));
@@ -46,7 +46,7 @@ export default function AdminLogin() {
       }
     } catch (err) {
       if (!err.response) {
-        setError('Cannot connect to backend server. Please ensure the backend server is running (npm run dev / node server.js inside server directory).');
+        setError('Cannot connect to backend server. Render free backend may be starting up—please wait 10–20 seconds and click Sign In again.');
       } else {
         setError(err.response?.data?.message || 'An error occurred. Please try again.');
       }

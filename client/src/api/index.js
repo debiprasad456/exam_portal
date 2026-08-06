@@ -10,7 +10,7 @@ const SERVER_URL =
 
 const api = axios.create({
   baseURL: `${SERVER_URL}/api`,
-  timeout: 15000,
+  timeout: 60000,
 });
 
 // Attach JWT for admin routes
