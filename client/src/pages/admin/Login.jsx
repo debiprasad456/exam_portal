@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../stores/authStore';
 import { adminLogin, adminSetup, checkAdminExists } from '../../api';
+import AuthRoleToggle from '../../components/AuthRoleToggle';
 
 export default function AdminLogin() {
   const [mode, setMode] = useState('login'); // 'login' | 'setup'
@@ -71,6 +72,7 @@ export default function AdminLogin() {
 
         {/* Card */}
         <div className="glass-card p-8">
+          <AuthRoleToggle activeRole="admin" />
           <h2 className="text-xl font-semibold text-white mb-6">
             {mode === 'setup' ? '🛠️ First-time Setup' : '👑 Admin Login'}
           </h2>

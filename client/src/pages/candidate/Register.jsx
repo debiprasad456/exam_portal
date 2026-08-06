@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { registerCandidate } from '../../api';
 import useCandidateStore from '../../stores/candidateStore';
+import AuthRoleToggle from '../../components/AuthRoleToggle';
 
 const SUBJECTS = [
   { value: 'marketing', label: 'Marketing', icon: '📈', desc: 'Market analysis, strategy & consumer behavior' },
@@ -51,6 +52,7 @@ export default function Register() {
         </div>
 
         <div className="glass-card p-8">
+          <AuthRoleToggle activeRole="candidate" />
           <h2 className="text-xl font-semibold text-white mb-6">📝 Candidate Registration</h2>
 
           {error && (
