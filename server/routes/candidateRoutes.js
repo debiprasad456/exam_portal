@@ -1,0 +1,243 @@
+const express = require('express');
+const router = express.Router();
+const Candidate = require('../models/Candidate');
+const Question = require('../models/Question');
+const Result = require('../models/Result');
+const ExamSession = require('../models/ExamSession');
+const { getIO } = require('../socket/ioInstance');
+
+/**
+ * POST /api/candidate/register
+ * Register a new candidate. Prevents duplicate email for an ongoing session.
+ */
+router.post('/register', async (req, res) => {
+  try {
+    const { name, email, phone, subject } = req.body;
+    if (!name || !email || !phone || !subject) {
+      return res.status(400).json({ message: 'All fields are required.' });
+    }
+    const validSubjects = ['marketing', 'hr', 'digital_marketing'];
+    if (!validSubjects.includes(subject)) {
+      return res.status(400).json({ message: 'Invalid subject.' });
+    }
+
+    // Check if this email has already submitted for the current or recent active session
+    const activeSession = await ExamSession.findOne({ subject, status: { $in: ['waiting', 'active'] } });
+    if (activeSession) {
+      const existingResult = await Result.findOne({
+        sessionId: activeSession.sessionId,
+        'candidate': { $exists: true },
+      }).populate('candidate', 'email');
+
+      // Check if any existing candidate with same email+subject already submitted
+      const candidateWithSameEmail = await Candidate.findOne({
+        email: email.toLowerCase().trim(),
+        subject,
+      });
+      if (candidateWithSameEmail) {
+        const alreadySubmitted = await Result.findOne({ candidate: candidateWithSameEmail._id });
+        if (alreadySubmitted) {
+          return res.status(400).json({ message: 'You have already taken this exam.' });
+        }
+        // Re-use existing registration (reconnect)
+        return res.json({
+          candidateId: candidateWithSameEmail._id,
+          name: candidateWithSameEmail.name,
+          subject: candidateWithSameEmail.subject,
+          message: 'Welcome back!',
+        });
+      }
+    }
+
+    // Check for existing candidate (e.g., page refresh case)
+    const existing = await Candidate.findOne({
+      email: email.toLowerCase().trim(),
+      subject,
+    });
+    if (existing) {
+      const submitted = await Result.findOne({ candidate: existing._id });
+      if (submitted) {
+        return res.status(400).json({ message: 'You have already taken this exam.' });
+      }
+      return res.json({
+        candidateId: existing._id,
+        name: existing.name,
+        subject: existing.subject,
+        message: 'Welcome back!',
+      });
+    }
+
+    const candidate = new Candidate({
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
+      phone: phone.trim(),
+      subject,
+    });
+    await candidate.save();
+
+    res.status(201).json({
+      candidateId: candidate._id,
+      name: candidate.name,
+      subject: candidate.subject,
+      message: 'Registered successfully! Please wait for the exam to begin.',
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/**
+ * GET /api/candidate/questions/:subject
+ * Questions for candidates — correctIndex is EXCLUDED.
+ */
+router.get('/questions/:subject', async (req, res) => {
+  try {
+    const { subject } = req.params;
+    const questions = await Question.find({ subject })
+      .select('-correctIndex')
+      .sort({ createdAt: 1 });
+
+    if (!questions.length) {
+      return res.status(404).json({ message: 'No questions found for this subject.' });
+    }
+    res.json(questions);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/**
+ * GET /api/candidate/exam-status
+ * Current exam session statuses for all subjects.
+ */
+router.get('/exam-status', async (req, res) => {
+  try {
+    const { activeTimers } = require('../socket/examSocket');
+    const subjects = ['marketing', 'hr', 'digital_marketing'];
+    const statusMap = {};
+
+    for (const subject of subjects) {
+      const session = await ExamSession.findOne({
+        subject,
+        status: { $in: ['waiting', 'active'] },
+      }).sort({ createdAt: -1 });
+
+      const timer = activeTimers.get(subject);
+      statusMap[subject] = {
+        status: session ? session.status : 'waiting',
+        timeLeft: timer ? timer.timeLeft : 0,
+        sessionId: session ? session.sessionId : null,
+        duration: session ? session.duration : 0,
+      };
+    }
+    res.json(statusMap);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/**
+ * POST /api/candidate/submit
+ * Submit exam answers. Prevents retakes by checking existing results.
+ * Body: { candidateId, subject, answers: [{ questionId, selectedIndex }] }
+ */
+router.post('/submit', async (req, res) => {
+  try {
+    const { candidateId, subject, answers } = req.body;
+    if (!candidateId || !subject || !Array.isArray(answers)) {
+      return res.status(400).json({ message: 'candidateId, subject, and answers are required.' });
+    }
+
+    // Find candidate
+    const candidate = await Candidate.findById(candidateId);
+    if (!candidate) {
+      return res.status(404).json({ message: 'Candidate not found.' });
+    }
+
+    // Prevent retake
+    const existingResult = await Result.findOne({ candidate: candidateId });
+    if (existingResult) {
+      return res.status(400).json({ message: 'You have already submitted your exam.' });
+    }
+
+    // Find the most recent active or just-ended session for the subject
+    const session = await ExamSession.findOne({
+      subject,
+      status: { $in: ['active', 'ended'] },
+    }).sort({ startedAt: -1 });
+
+    if (!session) {
+      return res.status(400).json({ message: 'No exam session found for this subject.' });
+    }
+
+    // Prevent duplicate submission for the same session
+    const sessionResult = await Result.findOne({
+      candidate: candidateId,
+      sessionId: session.sessionId,
+    });
+    if (sessionResult) {
+      return res.status(400).json({ message: 'Already submitted for this session.' });
+    }
+
+    // Get all questions for the subject WITH correctIndex
+    const questions = await Question.find({ subject });
+    if (!questions.length) {
+      return res.status(400).json({ message: 'No questions found for grading.' });
+    }
+
+    // Build answer breakdown
+    let score = 0;
+    const processedAnswers = questions.map((question) => {
+      const submitted = answers.find((a) => a.questionId === question._id.toString());
+      const selectedIndex = submitted ? submitted.selectedIndex : -1;
+      const isCorrect = selectedIndex !== -1 && selectedIndex === question.correctIndex;
+      if (isCorrect) score++;
+      return {
+        questionId: question._id,
+        questionText: question.questionText,
+        options: question.options,
+        selectedIndex,
+        correctIndex: question.correctIndex,
+        isCorrect,
+      };
+    });
+
+    const totalQuestions = processedAnswers.length;
+    const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
+
+    // Save result
+    const result = await Result.create({
+      candidate: candidate._id,
+      subject,
+      sessionId: session.sessionId,
+      answers: processedAnswers,
+      score,
+      totalQuestions,
+      percentage,
+    });
+
+    // Mark candidate as submitted
+    await Candidate.findByIdAndUpdate(candidateId, { hasSubmitted: true });
+
+    // Emit live result to admin room
+    try {
+      const io = getIO();
+      const populated = await Result.findById(result._id).populate(
+        'candidate',
+        'name email phone subject'
+      );
+      io.to('admin').emit('result:new', { result: populated });
+    } catch (_) {}
+
+    res.json({
+      message: 'Exam submitted successfully!',
+      score,
+      totalQuestions,
+      percentage,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+module.exports = router;
