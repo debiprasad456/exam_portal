@@ -1,6 +1,12 @@
 import axios from 'axios';
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:5000';
+const RENDER_BACKEND_URL = 'https://exam-portal-server-tliz.onrender.com';
+
+const SERVER_URL =
+  import.meta.env.VITE_SERVER_URL ||
+  (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
+    ? RENDER_BACKEND_URL
+    : 'http://localhost:5000');
 
 const api = axios.create({
   baseURL: `${SERVER_URL}/api`,
