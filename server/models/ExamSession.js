@@ -10,7 +10,7 @@ const examSessionSchema = new mongoose.Schema(
     subject: {
       type: String,
       required: true,
-      enum: ['marketing', 'hr', 'digital_marketing'],
+      enum: ['marketing', 'hr', 'digital_marketing', 'general_reasoning'],
     },
     duration: {
       type: Number, // total duration in seconds

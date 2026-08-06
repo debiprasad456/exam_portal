@@ -5,6 +5,7 @@ const SUBJECTS = [
   { value: 'marketing', label: 'Marketing', color: 'text-purple-300 bg-purple-500/10 border-purple-500/20' },
   { value: 'hr', label: 'HR', color: 'text-cyan-300 bg-cyan-500/10 border-cyan-500/20' },
   { value: 'digital_marketing', label: 'Digital Marketing', color: 'text-pink-300 bg-pink-500/10 border-pink-500/20' },
+  { value: 'general_reasoning', label: 'General Reasoning', color: 'text-amber-300 bg-amber-500/10 border-amber-500/20' },
 ];
 
 const EMPTY_FORM = {

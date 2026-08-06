@@ -27,6 +27,14 @@ const SUBJECTS = [
     glow: 'shadow-pink-500/30',
     badge: 'badge-digital_marketing',
   },
+  {
+    value: 'general_reasoning',
+    label: 'General Reasoning',
+    icon: '🧠',
+    gradient: 'from-amber-600 to-amber-800',
+    glow: 'shadow-amber-500/30',
+    badge: 'badge-general_reasoning',
+  },
 ];
 
 export default function ExamControl() {
@@ -48,12 +56,17 @@ export default function ExamControl() {
     );
   };
 
+  const availableSubjects = SUBJECTS.filter((s) => sessions[s.value]?.status !== 'active');
+  const hasAvailableSubjects = availableSubjects.length > 0;
+
   const selectAll = () => {
-    const allActive = SUBJECTS.every((s) => sessions[s.value]?.status === 'active');
-    if (allActive) return;
-    setSelectedSubjects(
-      SUBJECTS.filter((s) => sessions[s.value]?.status !== 'active').map((s) => s.value)
-    );
+    if (availableSubjects.length === 0) return;
+    const allAvailableSelected = availableSubjects.every((s) => selectedSubjects.includes(s.value));
+    if (allAvailableSelected) {
+      setSelectedSubjects([]);
+    } else {
+      setSelectedSubjects(availableSubjects.map((s) => s.value));
+    }
   };
 
   const handleStart = async () => {
@@ -63,6 +76,8 @@ export default function ExamControl() {
     setMessage('');
     try {
       const { data } = await startExam(selectedSubjects, duration);
+      const statusRes = await getAdminExamStatus();
+      loadSessions(statusRes.data);
       setMessage(`✅ ${data.message}`);
       setSelectedSubjects([]);
     } catch (err) {
@@ -76,6 +91,9 @@ export default function ExamControl() {
     setLoading(true);
     try {
       await stopExam(subject);
+      setExamEnded(subject);
+      const statusRes = await getAdminExamStatus();
+      loadSessions(statusRes.data);
       setMessage(`⏹ Exam stopped for ${SUBJECTS.find((s) => s.value === subject)?.label}.`);
     } catch (err) {
       setMessage(`❌ ${err.response?.data?.message || 'Failed to stop exam.'}`);
@@ -89,8 +107,6 @@ export default function ExamControl() {
     const s = secs % 60;
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
-
-  const allInactive = SUBJECTS.every((s) => sessions[s.value]?.status !== 'active');
 
   return (
     <div className="p-8 page-bg min-h-full">
@@ -111,7 +127,7 @@ export default function ExamControl() {
         )}
 
         {/* Start Panel */}
-        {allInactive && (
+        {hasAvailableSubjects && (
           <div className="glass-card p-8 mb-8">
             <h2 className="text-xl font-semibold text-white mb-6">🚀 Start New Exam</h2>
 
@@ -123,10 +139,10 @@ export default function ExamControl() {
                   onClick={selectAll}
                   className="text-xs text-primary-400 hover:text-primary-300 transition-colors"
                 >
-                  Select All 3
+                  Select All Available
                 </button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {SUBJECTS.map((s) => {
                   const isSelected = selectedSubjects.includes(s.value);
                   const isActive = sessions[s.value]?.status === 'active';
@@ -161,30 +177,15 @@ export default function ExamControl() {
             {/* Duration */}
             <div className="mb-6">
               <label className="form-label">Duration (minutes)</label>
-              <div className="flex items-center gap-4">
-                <input
-                  id="exam-duration-input"
-                  type="number"
-                  min={1}
-                  max={180}
-                  value={duration}
-                  onChange={(e) => setDuration(Number(e.target.value))}
-                  className="form-input w-36"
-                />
-                <div className="flex gap-2">
-                  {[15, 30, 45, 60].map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => setDuration(d)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                        duration === d ? 'bg-primary-500 text-white' : 'bg-white/5 text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      {d}m
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <input
+                id="exam-duration-input"
+                type="number"
+                min={1}
+                max={180}
+                value={duration}
+                onChange={(e) => setDuration(Number(e.target.value))}
+                className="form-input w-48"
+              />
             </div>
 
             <button
@@ -206,7 +207,7 @@ export default function ExamControl() {
         )}
 
         {/* Live Exam Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {SUBJECTS.map((s) => {
             const session = sessions[s.value];
             const isActive = session?.status === 'active';
@@ -232,20 +233,17 @@ export default function ExamControl() {
 
                 {isActive && (
                   <>
-                    <p className="text-4xl font-mono font-bold text-emerald-400 my-3">
-                      {formatTime(timeLeft)}
-                    </p>
-                    <div className="w-full h-2 bg-dark-600 rounded-full overflow-hidden mb-4">
-                      <div
-                        className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-1000"
-                        style={{ width: `${100 - progress}%` }}
-                      />
+                    <div className="my-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+                      <p className="text-emerald-400 font-bold text-lg">
+                        {Math.round((duration_ || 0) / 60)} min limit
+                      </p>
+                      <p className="text-slate-400 text-xs mt-0.5">per candidate attempt</p>
                     </div>
                     <button
                       id={`stop-${s.value}-btn`}
                       onClick={() => handleStop(s.value)}
                       disabled={loading}
-                      className="btn-danger w-full text-sm py-2"
+                      className="btn-danger w-full text-sm py-2 mt-2"
                     >
                       ⏹ Stop Exam
                     </button>

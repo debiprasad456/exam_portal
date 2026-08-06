@@ -9,47 +9,19 @@ const activeTimers = new Map();
  * Broadcasts tick events to candidates and admin in real time.
  */
 const startExamTimer = (io, session) => {
-  const { subject, duration, sessionId, _id } = session;
-  let timeLeft = duration; // seconds
+  const { subject, duration, sessionId } = session;
 
   // Notify candidates in the subject room and admin room
-  io.to(`subject:${subject}`).emit('exam:started', { subject, duration, timeLeft, sessionId });
-  io.to('admin').emit('exam:started', { subject, duration, timeLeft, sessionId });
+  io.to(`subject:${subject}`).emit('exam:started', { subject, duration, sessionId });
+  io.to('admin').emit('exam:started', { subject, duration, sessionId });
 
   // Clear any pre-existing timer for this subject
   if (activeTimers.has(subject)) {
     clearInterval(activeTimers.get(subject).intervalId);
   }
 
-  const intervalId = setInterval(async () => {
-    timeLeft -= 1;
-
-    io.to(`subject:${subject}`).emit('exam:tick', { subject, timeLeft });
-    io.to('admin').emit('exam:tick', { subject, timeLeft });
-
-    if (timeLeft <= 0) {
-      clearInterval(intervalId);
-      activeTimers.delete(subject);
-
-      // Update DB session status
-      try {
-        await ExamSession.findByIdAndUpdate(_id, {
-          status: 'ended',
-          endedAt: new Date(),
-        });
-      } catch (err) {
-        console.error('Error ending session:', err.message);
-      }
-
-      // Notify all parties
-      io.to(`subject:${subject}`).emit('exam:ended', { subject });
-      io.to('admin').emit('exam:ended', { subject });
-      console.log(`⏰ Exam ended for subject: ${subject}`);
-    }
-  }, 1000);
-
-  activeTimers.set(subject, { intervalId, timeLeft });
-  console.log(`▶️  Exam timer started for subject: ${subject} | Duration: ${duration}s`);
+  activeTimers.set(subject, { duration, sessionId });
+  console.log(`▶️  Exam session started for subject: ${subject} | Candidate Duration: ${duration}s`);
 };
 
 /**
@@ -58,12 +30,12 @@ const startExamTimer = (io, session) => {
 const stopExamTimer = async (io, subject) => {
   const timer = activeTimers.get(subject);
   if (timer) {
-    clearInterval(timer.intervalId);
+    if (timer.intervalId) clearInterval(timer.intervalId);
     activeTimers.delete(subject);
   }
 
   try {
-    await ExamSession.findOneAndUpdate(
+    await ExamSession.updateMany(
       { subject, status: 'active' },
       { status: 'ended', endedAt: new Date() }
     );

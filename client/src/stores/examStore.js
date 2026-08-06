@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-const SUBJECTS = ['marketing', 'hr', 'digital_marketing'];
+const SUBJECTS = ['marketing', 'hr', 'digital_marketing', 'general_reasoning'];
 
 const defaultSession = () => ({
   status: 'waiting', // waiting | active | ended
@@ -14,6 +14,7 @@ const useExamStore = create((set) => ({
     marketing: defaultSession(),
     hr: defaultSession(),
     digital_marketing: defaultSession(),
+    general_reasoning: defaultSession(),
   },
   // Live results received via socket (admin only)
   liveResults: [],

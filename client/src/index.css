@@ -124,6 +124,9 @@ html, body, #root {
   .badge-digital_marketing {
     @apply badge bg-pink-500 bg-opacity-20 text-pink-300 border border-pink-500 border-opacity-30;
   }
+  .badge-general_reasoning {
+    @apply badge bg-amber-500 bg-opacity-20 text-amber-300 border border-amber-500 border-opacity-30;
+  }
 
   /* Stat Card */
   .stat-card {

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { getResults } from '../../api';
+import { getResults, deleteResult } from '../../api';
 import useExamStore from '../../stores/examStore';
 
 const SUBJECTS = [
   { value: 'marketing', label: 'Marketing', color: 'text-purple-300 bg-purple-500/10 border-purple-500/20' },
   { value: 'hr', label: 'HR', color: 'text-cyan-300 bg-cyan-500/10 border-cyan-500/20' },
   { value: 'digital_marketing', label: 'Digital Marketing', color: 'text-pink-300 bg-pink-500/10 border-pink-500/20' },
+  { value: 'general_reasoning', label: 'General Reasoning', color: 'text-amber-300 bg-amber-500/10 border-amber-500/20' },
 ];
 
 export default function Results() {
@@ -13,6 +14,8 @@ export default function Results() {
   const [filter, setFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const { liveResults } = useExamStore();
 
   const load = () => {
@@ -31,6 +34,19 @@ export default function Results() {
     if (pct >= 80) return 'text-emerald-400';
     if (pct >= 50) return 'text-amber-400';
     return 'text-red-400';
+  };
+
+  const handleDelete = async (id) => {
+    setDeleting(true);
+    try {
+      await deleteResult(id);
+      setDeleteConfirm(null);
+      load();
+    } catch (err) {
+      console.error('Failed to delete result:', err);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -107,12 +123,25 @@ export default function Results() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-4">
                       <span className={`badge border ${subj?.color}`}>{subj?.label}</span>
                       <div className="text-right">
                         <p className={`text-xl font-bold ${getScoreColor(pct)}`}>{pct}%</p>
                         <p className="text-slate-500 text-xs">{result.score}/{result.totalQuestions} correct</p>
                       </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirm(result);
+                        }}
+                        className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20"
+                        title="Delete Record"
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
                       <div className="text-slate-400">
                         <svg className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -182,6 +211,37 @@ export default function Results() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="glass-card p-8 max-w-sm w-full text-center animate-slide-up">
+            <p className="text-4xl mb-4">🗑️</p>
+            <h3 className="text-xl font-bold text-white mb-2">Delete Record?</h3>
+            <p className="text-slate-400 text-sm mb-6">
+              Are you sure you want to delete the result for <strong className="text-white">{deleteConfirm.candidate?.name || 'this candidate'}</strong>? This will permanently delete both the exam result and candidate record from the database.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(null)}
+                disabled={deleting}
+                className="btn-ghost flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDelete(deleteConfirm._id)}
+                disabled={deleting}
+                className="btn-danger flex-1"
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

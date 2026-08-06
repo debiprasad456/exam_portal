@@ -21,11 +21,14 @@ const candidateSchema = new mongoose.Schema(
     subject: {
       type: String,
       required: true,
-      enum: ['marketing', 'hr', 'digital_marketing'],
+      enum: ['marketing', 'hr', 'digital_marketing', 'general_reasoning'],
     },
     hasSubmitted: {
       type: Boolean,
       default: false,
+    },
+    startedAt: {
+      type: Date,
     },
   },
   { timestamps: true }

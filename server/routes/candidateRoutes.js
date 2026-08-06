@@ -16,9 +16,15 @@ router.post('/register', async (req, res) => {
     if (!name || !email || !phone || !subject) {
       return res.status(400).json({ message: 'All fields are required.' });
     }
-    const validSubjects = ['marketing', 'hr', 'digital_marketing'];
+    const validSubjects = ['marketing', 'hr', 'digital_marketing', 'general_reasoning'];
     if (!validSubjects.includes(subject)) {
       return res.status(400).json({ message: 'Invalid subject.' });
+    }
+
+    // Check if questions are assigned for this subject
+    const questionCount = await Question.countDocuments({ subject });
+    if (questionCount === 0) {
+      return res.status(400).json({ message: 'Questions are not assigned, Please go back' });
     }
 
     // Check if this email has already submitted for the current or recent active session
@@ -113,7 +119,7 @@ router.get('/questions/:subject', async (req, res) => {
 router.get('/exam-status', async (req, res) => {
   try {
     const { activeTimers } = require('../socket/examSocket');
-    const subjects = ['marketing', 'hr', 'digital_marketing'];
+    const subjects = ['marketing', 'hr', 'digital_marketing', 'general_reasoning'];
     const statusMap = {};
 
     for (const subject of subjects) {
@@ -131,6 +137,71 @@ router.get('/exam-status', async (req, res) => {
       };
     }
     res.json(statusMap);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/**
+ * GET /api/candidate/candidate-session/:candidateId
+ * Individual candidate timer and status session info.
+ * Sets candidate.startedAt when candidate first enters active exam.
+ */
+router.get('/candidate-session/:candidateId', async (req, res) => {
+  try {
+    const candidate = await Candidate.findById(req.params.candidateId);
+    if (!candidate) {
+      return res.status(404).json({ message: 'Candidate not found.' });
+    }
+
+    const session = await ExamSession.findOne({
+      subject: candidate.subject,
+      status: { $in: ['waiting', 'active'] },
+    }).sort({ createdAt: -1 });
+
+    if (!session) {
+      return res.json({ status: 'ended', duration: 0, timeLeft: 0 });
+    }
+
+    if (session.status === 'waiting') {
+      return res.json({ status: 'waiting', duration: session.duration, timeLeft: 0 });
+    }
+
+    // Session is active. Record startedAt if candidate hasn't started yet
+    if (!candidate.startedAt) {
+      candidate.startedAt = new Date();
+      await candidate.save();
+    }
+
+    const duration = session.duration; // total duration in seconds
+    const elapsed = Math.floor((Date.now() - new Date(candidate.startedAt).getTime()) / 1000);
+    const timeLeft = Math.max(0, duration - elapsed);
+
+    res.json({
+      status: 'active',
+      duration,
+      timeLeft,
+      startedAt: candidate.startedAt,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/**
+ * DELETE /api/candidate/cleanup/:candidateId
+ * Remove candidate record if unsubmitted candidate leaves/aborts.
+ */
+router.delete('/cleanup/:candidateId', async (req, res) => {
+  try {
+    const candidate = await Candidate.findById(req.params.candidateId);
+    if (candidate) {
+      const submitted = await Result.findOne({ candidate: candidate._id });
+      if (!submitted) {
+        await Candidate.findByIdAndDelete(candidate._id);
+      }
+    }
+    res.json({ message: 'Candidate cleaned up.' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

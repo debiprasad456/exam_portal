@@ -8,6 +8,7 @@ const SUBJECTS = [
   { value: 'marketing', label: 'Marketing', icon: '📈', desc: 'Market analysis, strategy & consumer behavior' },
   { value: 'hr', label: 'Human Resources', icon: '🤝', desc: 'Recruitment, HR policies & employee relations' },
   { value: 'digital_marketing', label: 'Digital Marketing', icon: '💻', desc: 'SEO, social media & digital strategies' },
+  { value: 'general_reasoning', label: 'General Reasoning', icon: '🧠', desc: 'Logical reasoning, analytical & problem-solving skills' },
 ];
 
 export default function Register() {

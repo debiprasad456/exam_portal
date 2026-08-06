@@ -6,6 +6,7 @@ const SUBJECT_LABELS = {
   marketing: 'Marketing',
   hr: 'Human Resources',
   digital_marketing: 'Digital Marketing',
+  general_reasoning: 'General Reasoning',
 };
 
 export default function ThankYou() {

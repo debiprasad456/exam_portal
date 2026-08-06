@@ -36,12 +36,15 @@ export const stopExam = (subject) => api.post('/admin/exam/stop', { subject });
 // ─── Admin: Results & Stats ───
 export const getResults = (subject = '') =>
   api.get('/admin/results', { params: subject ? { subject } : {} });
+export const deleteResult = (id) => api.delete(`/admin/results/${id}`);
 export const getStats = () => api.get('/admin/stats');
 
 // ─── Candidate ───
 export const registerCandidate = (data) => api.post('/candidate/register', data);
 export const getCandidateQuestions = (subject) => api.get(`/candidate/questions/${subject}`);
 export const getExamStatus = () => api.get('/candidate/exam-status');
+export const getCandidateSession = (candidateId) => api.get(`/candidate/candidate-session/${candidateId}`);
+export const cleanupCandidate = (candidateId) => api.delete(`/candidate/cleanup/${candidateId}`);
 export const submitExam = (data) => api.post('/candidate/submit', data);
 
 export default api;

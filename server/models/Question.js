@@ -5,7 +5,7 @@ const questionSchema = new mongoose.Schema(
     subject: {
       type: String,
       required: true,
-      enum: ['marketing', 'hr', 'digital_marketing'],
+      enum: ['marketing', 'hr', 'digital_marketing', 'general_reasoning'],
     },
     questionText: {
       type: String,

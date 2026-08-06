@@ -7,12 +7,14 @@ const SUBJECT_LABELS = {
   marketing: 'Marketing',
   hr: 'HR',
   digital_marketing: 'Digital Marketing',
+  general_reasoning: 'General Reasoning',
 };
 
 const SUBJECT_COLORS = {
   marketing: '#7C3AED',
   hr: '#06B6D4',
   digital_marketing: '#EC4899',
+  general_reasoning: '#F59E0B',
 };
 
 export default function Dashboard() {
@@ -29,7 +31,7 @@ export default function Dashboard() {
 
   const activeCount = Object.values(sessions).filter((s) => s.status === 'active').length;
 
-  const chartData = ['marketing', 'hr', 'digital_marketing'].map((sub) => {
+  const chartData = ['marketing', 'hr', 'digital_marketing', 'general_reasoning'].map((sub) => {
     const found = stats?.subjectResultCounts?.find((s) => s._id === sub);
     return {
       name: SUBJECT_LABELS[sub],
@@ -39,7 +41,7 @@ export default function Dashboard() {
     };
   });
 
-  const qChartData = ['marketing', 'hr', 'digital_marketing'].map((sub) => {
+  const qChartData = ['marketing', 'hr', 'digital_marketing', 'general_reasoning'].map((sub) => {
     const found = stats?.questionCounts?.find((s) => s._id === sub);
     return { name: SUBJECT_LABELS[sub], count: found?.count || 0, color: SUBJECT_COLORS[sub] };
   });
@@ -96,8 +98,8 @@ export default function Dashboard() {
             <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
             Live Exam Status
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {['marketing', 'hr', 'digital_marketing'].map((sub) => {
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {['marketing', 'hr', 'digital_marketing', 'general_reasoning'].map((sub) => {
               const session = sessions[sub];
               const mins = Math.floor((session.timeLeft || 0) / 60);
               const secs = (session.timeLeft || 0) % 60;
@@ -122,8 +124,8 @@ export default function Dashboard() {
                     )}
                   </div>
                   {session.status === 'active' && (
-                    <p className="text-2xl font-mono font-bold text-emerald-400">
-                      {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
+                    <p className="text-emerald-400 font-bold text-sm">
+                      {Math.round((session.duration || 0) / 60)} min limit
                     </p>
                   )}
                   {session.status !== 'active' && (

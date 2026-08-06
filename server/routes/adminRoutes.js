@@ -95,18 +95,16 @@ router.delete('/questions/:id', async (req, res) => {
  */
 router.get('/exam/status', async (req, res) => {
   try {
-    const sessions = await ExamSession.find().sort({ createdAt: -1 }).limit(10);
+    const sessions = await ExamSession.find().sort({ createdAt: -1 });
     const statusMap = {};
-    ['marketing', 'hr', 'digital_marketing'].forEach((sub) => {
-      const session = sessions.find((s) => s.subject === sub && s.status !== 'ended');
-      const timer = activeTimers.get(sub);
+    for (const sub of ['marketing', 'hr', 'digital_marketing', 'general_reasoning']) {
+      const session = sessions.find((s) => s.subject === sub);
       statusMap[sub] = {
         status: session ? session.status : 'waiting',
-        timeLeft: timer ? timer.timeLeft : 0,
         sessionId: session ? session.sessionId : null,
         duration: session ? session.duration : 0,
       };
-    });
+    }
     res.json(statusMap);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -116,7 +114,7 @@ router.get('/exam/status', async (req, res) => {
 /**
  * POST /api/admin/exam/start
  * Start exam for one or more subjects.
- * Body: { subjects: ['marketing', 'hr', 'digital_marketing'], duration: 30 } (duration in minutes)
+ * Body: { subjects: ['marketing', 'hr', 'digital_marketing', 'general_reasoning'], duration: 30 } (duration in minutes)
  */
 router.post('/exam/start', async (req, res) => {
   try {
@@ -173,6 +171,26 @@ router.post('/exam/stop', async (req, res) => {
     const io = getIO();
     await stopExamTimer(io, subject);
     res.json({ message: `Exam stopped for subject: ${subject}` });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/**
+ * DELETE /api/admin/results/:id
+ * Delete a result and its candidate record.
+ */
+router.delete('/results/:id', async (req, res) => {
+  try {
+    const result = await Result.findById(req.params.id);
+    if (!result) return res.status(404).json({ message: 'Result not found.' });
+
+    if (result.candidate) {
+      await Candidate.findByIdAndDelete(result.candidate);
+    }
+    await Result.findByIdAndDelete(req.params.id);
+
+    res.json({ message: 'Result deleted successfully.' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

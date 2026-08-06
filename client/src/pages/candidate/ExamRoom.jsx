@@ -1,11 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCandidateQuestions, submitExam, getExamStatus } from '../../api';
+import { getCandidateQuestions, submitExam, getCandidateSession, cleanupCandidate } from '../../api';
 import { getSocket } from '../../socket';
 import useCandidateStore from '../../stores/candidateStore';
 
 export default function ExamRoom() {
-  const { candidateId, subject, name, setSubmitted, hasSubmitted } = useCandidateStore();
+  const { candidateId, subject, name, setSubmitted, hasSubmitted, clear } = useCandidateStore();
   const navigate = useNavigate();
 
   const [questions, setQuestions] = useState([]);
@@ -29,27 +29,29 @@ export default function ExamRoom() {
       .catch(() => setError('Failed to load questions. Please refresh.'))
       .finally(() => setLoading(false));
 
-    // Get current time left from server
-    getExamStatus()
+    // Fetch individual candidate timer session
+    getCandidateSession(candidateId)
       .then(({ data }) => {
-        const session = data[subject];
-        if (session?.status === 'ended') { navigate('/thankyou'); return; }
-        if (session?.status === 'active') {
-          setTimeLeft(session.timeLeft || 0);
-          setDuration(session.duration || 0);
-        } else if (session?.status === 'waiting') {
+        if (data.status === 'ended') {
+          navigate('/thankyou');
+          return;
+        }
+        if (data.status === 'active') {
+          setTimeLeft(data.timeLeft || 0);
+          setDuration(data.duration || 0);
+          if (data.timeLeft <= 0 && !autoSubmitRef.current) {
+            autoSubmitRef.current = true;
+            handleAutoSubmit();
+          }
+        } else if (data.status === 'waiting') {
           navigate('/waiting');
         }
       })
       .catch(() => {});
 
-    // Socket for live tick & end
+    // Socket for manual exam stop by admin
     const socket = getSocket();
     socket.emit('candidate:join', { subject });
-
-    socket.on('exam:tick', ({ subject: s, timeLeft: t }) => {
-      if (s === subject) setTimeLeft(t);
-    });
 
     socket.on('exam:ended', ({ subject: s }) => {
       if (s === subject && !autoSubmitRef.current) {
@@ -59,10 +61,30 @@ export default function ExamRoom() {
     });
 
     return () => {
-      socket.off('exam:tick');
       socket.off('exam:ended');
     };
   }, []);
+
+  // Local 1-second timer tick for candidate's individual time
+  useEffect(() => {
+    if (timeLeft <= 0) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          if (!autoSubmitRef.current) {
+            autoSubmitRef.current = true;
+            handleAutoSubmit();
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft > 0]);
 
   const handleAutoSubmit = async () => {
     if (submitted) return;
@@ -107,7 +129,7 @@ export default function ExamRoom() {
   const timerColor = timeLeft < 60 ? 'text-red-400' : timeLeft < 300 ? 'text-amber-400' : 'text-emerald-400';
   const timerBg = timeLeft < 60 ? 'from-red-500 to-red-600' : timeLeft < 300 ? 'from-amber-500 to-amber-600' : 'from-emerald-500 to-emerald-600';
 
-  const SUBJECT_LABELS = { marketing: 'Marketing', hr: 'Human Resources', digital_marketing: 'Digital Marketing' };
+  const SUBJECT_LABELS = { marketing: 'Marketing', hr: 'Human Resources', digital_marketing: 'Digital Marketing', general_reasoning: 'General Reasoning' };
 
   if (loading) {
     return (
@@ -120,15 +142,30 @@ export default function ExamRoom() {
     );
   }
 
-  if (error && questions.length === 0) {
+  const handleBackToLogin = async () => {
+    if (candidateId) {
+      try { await cleanupCandidate(candidateId); } catch {}
+    }
+    clear();
+    navigate('/');
+  };
+
+  if ((error || questions.length === 0) && !loading) {
     return (
       <div className="min-h-screen page-bg flex items-center justify-center p-4">
-        <div className="glass-card p-8 text-center max-w-md">
-          <p className="text-4xl mb-4">⚠️</p>
-          <p className="text-white font-semibold mb-2">Something went wrong</p>
-          <p className="text-slate-400 text-sm">{error}</p>
-          <button onClick={() => window.location.reload()} className="btn-ghost mt-4">
-            Try Again
+        <div className="glass-card p-8 text-center max-w-md animate-fade-in">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-3xl mx-auto mb-4 text-amber-400">
+            📋
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">Questions are not assigned</h2>
+          <p className="text-slate-400 text-sm mb-6">
+            Questions are not assigned, Please go back
+          </p>
+          <button
+            onClick={handleBackToLogin}
+            className="btn-primary w-full py-3 text-sm flex items-center justify-center gap-2"
+          >
+            ← Back to Candidate Login
           </button>
         </div>
       </div>
