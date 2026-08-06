@@ -18,7 +18,11 @@ export default function AdminLogin() {
     if (isAuthenticated) { navigate('/admin/dashboard'); return; }
     checkAdminExists()
       .then(({ data }) => { if (!data.exists) setMode('setup'); })
-      .catch(() => {})
+      .catch((err) => {
+        if (!err.response) {
+          setError('Cannot connect to backend server. Please make sure the backend server is running on http://localhost:5000.');
+        }
+      })
       .finally(() => setChecking(false));
   }, []);
 
@@ -40,7 +44,11 @@ export default function AdminLogin() {
         navigate('/admin/dashboard');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'An error occurred. Please try again.');
+      if (!err.response) {
+        setError('Cannot connect to backend server. Please ensure the backend server is running (npm run dev / node server.js inside server directory).');
+      } else {
+        setError(err.response?.data?.message || 'An error occurred. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
