@@ -113,6 +113,7 @@ export default function Results() {
               const subj = SUBJECTS.find((s) => s.value === result.subject);
               const isExpanded = expanded === result._id;
               const pct = result.percentage || 0;
+              const isPassed = (result.score || 0) >= 12;
               return (
                 <div key={result._id} className="glass-card overflow-hidden">
                   {/* Result Row */}
@@ -127,7 +128,10 @@ export default function Results() {
                       </div>
                       {/* Info */}
                       <div className="min-w-0">
-                        <p className="text-white font-semibold text-sm sm:text-base truncate">{result.candidate?.name}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-white font-semibold text-sm sm:text-base truncate">{result.candidate?.name}</p>
+                          <span className={`badge border text-xs px-2.5 py-0.5 ${subj?.color}`}>{subj?.label}</span>
+                        </div>
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
                           <p className="text-slate-500 text-xs truncate">{result.candidate?.email}</p>
                           <span className="text-slate-600 hidden sm:inline">•</span>
@@ -137,7 +141,15 @@ export default function Results() {
                     </div>
 
                     <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
-                      <span className={`badge border ${subj?.color}`}>{subj?.label}</span>
+                      <span
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${
+                          isPassed
+                            ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
+                            : 'text-red-400 bg-red-500/10 border-red-500/30'
+                        }`}
+                      >
+                        {isPassed ? 'Passed' : 'Failed'}
+                      </span>
                       <div className="text-right">
                         <p className={`text-lg sm:text-xl font-bold ${getScoreColor(pct)}`}>{pct}%</p>
                         <p className="text-slate-500 text-xs">{result.score}/{result.totalQuestions} correct</p>
