@@ -88,15 +88,15 @@ export default function Questions() {
   const filtered = filter ? questions.filter((q) => q.subject === filter) : questions;
 
   return (
-    <div className="p-8 page-bg min-h-full">
+    <div className="p-4 sm:p-6 md:p-8 page-bg min-h-full">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">Question Bank</h1>
-            <p className="text-slate-400 mt-1">{questions.length} total questions across all subjects</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">Question Bank</h1>
+            <p className="text-slate-400 text-xs sm:text-sm mt-1">{questions.length} total questions across all subjects</p>
           </div>
-          <button id="add-question-btn" onClick={openCreate} className="btn-primary">
+          <button id="add-question-btn" onClick={openCreate} className="btn-primary w-full sm:w-auto">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
@@ -108,7 +108,7 @@ export default function Questions() {
         <div className="flex gap-2 mb-6 flex-wrap">
           <button
             onClick={() => setFilter('')}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+            className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${
               filter === '' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white bg-white/5'
             }`}
           >
@@ -120,7 +120,7 @@ export default function Questions() {
               <button
                 key={s.value}
                 onClick={() => setFilter(s.value)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${
                   filter === s.value ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white bg-white/5'
                 }`}
               >
@@ -138,77 +138,79 @@ export default function Questions() {
               Loading questions...
             </div>
           ) : filtered.length === 0 ? (
-            <div className="p-12 text-center">
+            <div className="p-8 sm:p-12 text-center">
               <p className="text-4xl mb-3">📭</p>
-              <p className="text-slate-400">No questions yet. Click "Add Question" to create one.</p>
+              <p className="text-slate-400 text-sm sm:text-base">No questions yet. Click "Add Question" to create one.</p>
             </div>
           ) : (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Subject</th>
-                  <th>Question</th>
-                  <th>Options</th>
-                  <th>Correct</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((q, i) => {
-                  const subj = SUBJECTS.find((s) => s.value === q.subject);
-                  return (
-                    <tr key={q._id}>
-                      <td className="text-slate-500 text-xs">{i + 1}</td>
-                      <td>
-                        <span className={`badge border ${subj?.color}`}>{subj?.label}</span>
-                      </td>
-                      <td className="max-w-xs">
-                        <p className="text-white text-sm line-clamp-2">{q.questionText}</p>
-                      </td>
-                      <td>
-                        <div className="space-y-0.5">
-                          {q.options.map((opt, idx) => (
-                            <p key={idx} className={`text-xs ${idx === q.correctIndex ? 'text-emerald-400 font-semibold' : 'text-slate-500'}`}>
-                              {['A', 'B', 'C', 'D'][idx]}. {opt}
-                            </p>
-                          ))}
-                        </div>
-                      </td>
-                      <td>
-                        <span className="text-emerald-400 font-bold text-sm">
-                          {['A', 'B', 'C', 'D'][q.correctIndex]}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => openEdit(q)}
-                            className="px-3 py-1.5 text-xs rounded-lg bg-primary-500/10 text-primary-300 border border-primary-500/20 hover:bg-primary-500/20 transition-colors"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => setDeleteConfirm(q._id)}
-                            className="px-3 py-1.5 text-xs rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="data-table min-w-[640px]">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Subject</th>
+                    <th>Question</th>
+                    <th>Options</th>
+                    <th>Correct</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((q, i) => {
+                    const subj = SUBJECTS.find((s) => s.value === q.subject);
+                    return (
+                      <tr key={q._id}>
+                        <td className="text-slate-500 text-xs">{i + 1}</td>
+                        <td>
+                          <span className={`badge border ${subj?.color}`}>{subj?.label}</span>
+                        </td>
+                        <td className="max-w-xs">
+                          <p className="text-white text-sm line-clamp-2">{q.questionText}</p>
+                        </td>
+                        <td>
+                          <div className="space-y-0.5">
+                            {q.options.map((opt, idx) => (
+                              <p key={idx} className={`text-xs ${idx === q.correctIndex ? 'text-emerald-400 font-semibold' : 'text-slate-500'}`}>
+                                {['A', 'B', 'C', 'D'][idx]}. {opt}
+                              </p>
+                            ))}
+                          </div>
+                        </td>
+                        <td>
+                          <span className="text-emerald-400 font-bold text-sm">
+                            {['A', 'B', 'C', 'D'][q.correctIndex]}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => openEdit(q)}
+                              className="px-3 py-1.5 text-xs rounded-lg bg-primary-500/10 text-primary-300 border border-primary-500/20 hover:bg-primary-500/20 transition-colors"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirm(q._id)}
+                              className="px-3 py-1.5 text-xs rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>
 
       {/* Create/Edit Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="glass-card w-full max-w-2xl p-8 max-h-[90vh] overflow-y-auto animate-slide-up">
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-3 sm:p-4 animate-fade-in">
+          <div className="glass-card w-full max-w-2xl p-5 sm:p-8 max-h-[90vh] overflow-y-auto animate-slide-up">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white">
                 {editingId ? 'Edit Question' : 'New Question'}

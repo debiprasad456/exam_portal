@@ -50,14 +50,14 @@ export default function Results() {
   };
 
   return (
-    <div className="p-8 page-bg min-h-full">
+    <div className="p-4 sm:p-6 md:p-8 page-bg min-h-full">
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">Exam Results</h1>
-            <p className="text-slate-400 mt-1">{results.length} total submissions</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">Exam Results</h1>
+            <p className="text-slate-400 text-xs sm:text-sm mt-1">{results.length} total submissions</p>
           </div>
-          <button onClick={load} className="btn-ghost text-sm px-4 py-2">
+          <button onClick={load} className="btn-ghost text-xs sm:text-sm px-3 sm:px-4 py-2 self-start sm:self-auto">
             ↻ Refresh
           </button>
         </div>
@@ -66,7 +66,7 @@ export default function Results() {
         <div className="flex gap-2 mb-6 flex-wrap">
           <button
             onClick={() => setFilter('')}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${filter === '' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white bg-white/5'}`}
+            className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${filter === '' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white bg-white/5'}`}
           >
             All ({results.length})
           </button>
@@ -76,7 +76,7 @@ export default function Results() {
               <button
                 key={s.value}
                 onClick={() => setFilter(s.value)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${filter === s.value ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white bg-white/5'}`}
+                className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${filter === s.value ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white bg-white/5'}`}
               >
                 {s.label} ({cnt})
               </button>
@@ -90,9 +90,9 @@ export default function Results() {
             Loading results...
           </div>
         ) : results.length === 0 ? (
-          <div className="glass-card p-12 text-center">
+          <div className="glass-card p-8 sm:p-12 text-center">
             <p className="text-4xl mb-3">📊</p>
-            <p className="text-slate-400">No results yet. Results will appear here once candidates submit their exams.</p>
+            <p className="text-slate-400 text-sm sm:text-base">No results yet. Results will appear here once candidates submit their exams.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -104,29 +104,29 @@ export default function Results() {
                 <div key={result._id} className="glass-card overflow-hidden">
                   {/* Result Row */}
                   <div
-                    className="flex items-center justify-between p-5 cursor-pointer hover:bg-white/3 transition-colors"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 gap-3 cursor-pointer hover:bg-white/3 transition-colors"
                     onClick={() => toggleExpand(result._id)}
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                       {/* Avatar */}
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-xs sm:text-sm font-bold text-white flex-shrink-0">
                         {result.candidate?.name?.[0]?.toUpperCase() || '?'}
                       </div>
                       {/* Info */}
-                      <div>
-                        <p className="text-white font-semibold">{result.candidate?.name}</p>
-                        <div className="flex items-center gap-3 mt-0.5">
-                          <p className="text-slate-500 text-xs">{result.candidate?.email}</p>
-                          <span className="text-slate-600">•</span>
+                      <div className="min-w-0">
+                        <p className="text-white font-semibold text-sm sm:text-base truncate">{result.candidate?.name}</p>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                          <p className="text-slate-500 text-xs truncate">{result.candidate?.email}</p>
+                          <span className="text-slate-600 hidden sm:inline">•</span>
                           <p className="text-slate-500 text-xs">{result.candidate?.phone}</p>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
                       <span className={`badge border ${subj?.color}`}>{subj?.label}</span>
                       <div className="text-right">
-                        <p className={`text-xl font-bold ${getScoreColor(pct)}`}>{pct}%</p>
+                        <p className={`text-lg sm:text-xl font-bold ${getScoreColor(pct)}`}>{pct}%</p>
                         <p className="text-slate-500 text-xs">{result.score}/{result.totalQuestions} correct</p>
                       </div>
                       <button

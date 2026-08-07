@@ -47,23 +47,23 @@ export default function Dashboard() {
   });
 
   return (
-    <div className="p-8 page-bg min-h-full">
+    <div className="p-4 sm:p-6 md:p-8 page-bg min-h-full">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-          <p className="text-slate-400 mt-1">Overview of your exam portal activity</p>
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Dashboard</h1>
+          <p className="text-slate-400 text-xs sm:text-sm mt-1">Overview of your exam portal activity</p>
         </div>
 
         {/* Stat Cards */}
         {loading ? (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="glass-card p-6 h-28 animate-pulse bg-dark-700" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <StatCard
               icon="👥"
               label="Total Candidates"

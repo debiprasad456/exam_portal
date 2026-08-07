@@ -109,15 +109,15 @@ export default function ExamControl() {
   };
 
   return (
-    <div className="p-8 page-bg min-h-full">
+    <div className="p-4 sm:p-6 md:p-8 page-bg min-h-full">
       <div className="max-w-5xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white">Exam Control</h1>
-          <p className="text-slate-400 mt-1">Start, monitor, and stop exam sessions in real time</p>
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Exam Control</h1>
+          <p className="text-slate-400 text-xs sm:text-sm mt-1">Start, monitor, and stop exam sessions in real time</p>
         </div>
 
         {message && (
-          <div className={`mb-6 px-5 py-4 rounded-xl text-sm font-medium ${
+          <div className={`mb-6 px-4 sm:px-5 py-3 sm:py-4 rounded-xl text-xs sm:text-sm font-medium ${
             message.startsWith('✅') ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' :
             message.startsWith('❌') ? 'bg-red-500/10 border border-red-500/30 text-red-400' :
             'bg-amber-500/10 border border-amber-500/30 text-amber-400'
@@ -128,8 +128,8 @@ export default function ExamControl() {
 
         {/* Start Panel */}
         {hasAvailableSubjects && (
-          <div className="glass-card p-8 mb-8">
-            <h2 className="text-xl font-semibold text-white mb-6">🚀 Start New Exam</h2>
+          <div className="glass-card p-5 sm:p-8 mb-8">
+            <h2 className="text-lg sm:text-xl font-semibold text-white mb-6">🚀 Start New Exam</h2>
 
             {/* Subject Selection */}
             <div className="mb-6">
@@ -151,7 +151,7 @@ export default function ExamControl() {
                       key={s.value}
                       disabled={isActive}
                       onClick={() => toggleSubject(s.value)}
-                      className={`p-5 rounded-xl border-2 text-left transition-all duration-200 ${
+                      className={`p-4 sm:p-5 rounded-xl border-2 text-left transition-all duration-200 ${
                         isActive
                           ? 'border-emerald-500/50 bg-emerald-500/5 cursor-not-allowed opacity-60'
                           : isSelected
@@ -174,35 +174,37 @@ export default function ExamControl() {
               </div>
             </div>
 
-            {/* Duration */}
-            <div className="mb-6">
-              <label className="form-label">Duration (minutes)</label>
-              <input
-                id="exam-duration-input"
-                type="number"
-                min={1}
-                max={180}
-                value={duration}
-                onChange={(e) => setDuration(Number(e.target.value))}
-                className="form-input w-48"
-              />
-            </div>
+            {/* Duration & Start Button */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
+              <div className="w-full sm:w-auto">
+                <label className="form-label">Duration (minutes)</label>
+                <input
+                  id="exam-duration-input"
+                  type="number"
+                  min={1}
+                  max={180}
+                  value={duration}
+                  onChange={(e) => setDuration(Number(e.target.value))}
+                  className="form-input w-full sm:w-48"
+                />
+              </div>
 
-            <button
-              id="start-exam-btn"
-              onClick={handleStart}
-              disabled={loading || selectedSubjects.length === 0}
-              className="btn-primary text-lg px-10 py-4"
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Starting...
-                </span>
-              ) : (
-                <>▶ Start Exam {selectedSubjects.length > 0 ? `(${selectedSubjects.length} subject${selectedSubjects.length > 1 ? 's' : ''})` : ''}</>
-              )}
-            </button>
+              <button
+                id="start-exam-btn"
+                onClick={handleStart}
+                disabled={loading || selectedSubjects.length === 0}
+                className="btn-primary text-base sm:text-lg px-8 sm:px-10 py-3 sm:py-4 w-full sm:w-auto"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Starting...
+                  </span>
+                ) : (
+                  <>▶ Start Exam {selectedSubjects.length > 0 ? `(${selectedSubjects.length} subject${selectedSubjects.length > 1 ? 's' : ''})` : ''}</>
+                )}
+              </button>
+            </div>
           </div>
         )}
 

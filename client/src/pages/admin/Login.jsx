@@ -80,7 +80,7 @@ export default function AdminLogin() {
         </div>
 
         {/* Card */}
-        <div className="glass-card p-8">
+        <div className="glass-card p-5 sm:p-8">
           <AuthRoleToggle activeRole="admin" />
           <h2 className="text-xl font-semibold text-white mb-6">
             {mode === 'setup' ? '🛠️ First-time Setup' : '👑 Admin Login'}

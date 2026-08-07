@@ -52,9 +52,9 @@ export default function Register() {
           <p className="text-slate-400 mt-2">Register to begin your examination</p>
         </div>
 
-        <div className="glass-card p-8">
+        <div className="glass-card p-5 sm:p-8">
           <AuthRoleToggle activeRole="candidate" />
-          <h2 className="text-xl font-semibold text-white mb-6">📝 Candidate Registration</h2>
+          <h2 className="text-lg sm:text-xl font-semibold text-white mb-6">📝 Candidate Registration</h2>
 
           {error && (
             <div className="mb-5 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
