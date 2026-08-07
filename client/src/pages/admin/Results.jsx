@@ -20,13 +20,13 @@ export default function Results() {
 
   const load = () => {
     setLoading(true);
-    getResults(filter)
+    getResults()
       .then(({ data }) => setResults(data))
       .catch(() => {})
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [filter, liveResults.length]);
+  useEffect(() => { load(); }, [liveResults.length]);
 
   const toggleExpand = (id) => setExpanded((prev) => (prev === id ? null : id));
 
@@ -48,6 +48,14 @@ export default function Results() {
       setDeleting(false);
     }
   };
+
+  const filteredResults = filter ? results.filter((r) => r.subject === filter) : results;
+  const displayedResults = [...filteredResults].sort((a, b) => {
+    if ((b.percentage || 0) !== (a.percentage || 0)) {
+      return (b.percentage || 0) - (a.percentage || 0);
+    }
+    return (b.score || 0) - (a.score || 0);
+  });
 
   return (
     <div className="p-4 sm:p-6 md:p-8 page-bg min-h-full">
@@ -94,9 +102,14 @@ export default function Results() {
             <p className="text-4xl mb-3">📊</p>
             <p className="text-slate-400 text-sm sm:text-base">No results yet. Results will appear here once candidates submit their exams.</p>
           </div>
+        ) : displayedResults.length === 0 ? (
+          <div className="glass-card p-8 sm:p-12 text-center">
+            <p className="text-4xl mb-3">📊</p>
+            <p className="text-slate-400 text-sm sm:text-base">No results found for this section.</p>
+          </div>
         ) : (
           <div className="space-y-3">
-            {results.map((result) => {
+            {displayedResults.map((result) => {
               const subj = SUBJECTS.find((s) => s.value === result.subject);
               const isExpanded = expanded === result._id;
               const pct = result.percentage || 0;

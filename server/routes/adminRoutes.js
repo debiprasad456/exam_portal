@@ -209,7 +209,7 @@ router.get('/results', async (req, res) => {
     const filter = subject ? { subject } : {};
     const results = await Result.find(filter)
       .populate('candidate', 'name email phone subject createdAt')
-      .sort({ createdAt: -1 });
+      .sort({ percentage: -1, score: -1, createdAt: -1 });
     res.json(results);
   } catch (err) {
     res.status(500).json({ message: err.message });
