@@ -101,7 +101,8 @@ router.get('/questions/:subject', async (req, res) => {
     const { subject } = req.params;
     const questions = await Question.find({ subject })
       .select('-correctIndex')
-      .sort({ createdAt: 1 });
+      .sort({ createdAt: 1 })
+      .lean();
 
     if (!questions.length) {
       return res.status(404).json({ message: 'No questions found for this subject.' });
@@ -220,13 +221,13 @@ router.post('/submit', async (req, res) => {
     }
 
     // Find candidate
-    const candidate = await Candidate.findById(candidateId);
+    const candidate = await Candidate.findById(candidateId).lean();
     if (!candidate) {
       return res.status(404).json({ message: 'Candidate not found.' });
     }
 
     // Prevent retake
-    const existingResult = await Result.findOne({ candidate: candidateId });
+    const existingResult = await Result.findOne({ candidate: candidateId }).lean();
     if (existingResult) {
       return res.status(400).json({ message: 'You have already submitted your exam.' });
     }
@@ -235,7 +236,7 @@ router.post('/submit', async (req, res) => {
     const session = await ExamSession.findOne({
       subject,
       status: { $in: ['active', 'ended'] },
-    }).sort({ startedAt: -1 });
+    }).sort({ startedAt: -1 }).lean();
 
     if (!session) {
       return res.status(400).json({ message: 'No exam session found for this subject.' });
@@ -245,13 +246,13 @@ router.post('/submit', async (req, res) => {
     const sessionResult = await Result.findOne({
       candidate: candidateId,
       sessionId: session.sessionId,
-    });
+    }).lean();
     if (sessionResult) {
       return res.status(400).json({ message: 'Already submitted for this session.' });
     }
 
     // Get all questions for the subject WITH correctIndex
-    const questions = await Question.find({ subject });
+    const questions = await Question.find({ subject }).lean();
     if (!questions.length) {
       return res.status(400).json({ message: 'No questions found for grading.' });
     }

@@ -45,10 +45,10 @@ setIO(io);
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// Rate limiting
+// Rate limiting (Increased to 10000 to allow multiple candidates sharing campus/lab IP addresses)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200,
+  max: 10000,
   message: { message: 'Too many requests, please try again later.' },
 });
 app.use('/api', limiter);
