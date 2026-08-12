@@ -219,7 +219,7 @@ router.get('/results', async (req, res) => {
     const { subject } = req.query;
     const filter = subject ? { subject } : {};
     const results = await Result.find(filter)
-      .populate('candidate', 'name email phone subject createdAt')
+      .populate('candidate', 'name email phone address subject createdAt')
       .sort({ percentage: -1, score: -1, createdAt: -1 });
     res.json(results);
   } catch (err) {

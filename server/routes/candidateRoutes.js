@@ -12,8 +12,8 @@ const { getIO } = require('../socket/ioInstance');
  */
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, phone, subject } = req.body;
-    if (!name || !email || !phone || !subject) {
+    const { name, email, phone, address, subject } = req.body;
+    if (!name || !email || !phone || !address || !subject) {
       return res.status(400).json({ message: 'All fields are required.' });
     }
     const validSubjects = ['marketing', 'hr', 'digital_marketing', 'general_reasoning'];
@@ -77,6 +77,7 @@ router.post('/register', async (req, res) => {
       name: name.trim(),
       email: email.toLowerCase().trim(),
       phone: phone.trim(),
+      address: address.trim(),
       subject,
     });
     await candidate.save();
@@ -315,7 +316,7 @@ router.post('/submit', async (req, res) => {
       const io = getIO();
       const populated = await Result.findById(result._id).populate(
         'candidate',
-        'name email phone subject'
+        'name email phone address subject'
       );
       io.to('admin').emit('result:new', { result: populated });
     } catch (_) {}

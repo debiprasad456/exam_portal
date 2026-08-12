@@ -12,7 +12,7 @@ const SUBJECTS = [
 ];
 
 export default function Register() {
-  const [form, setForm] = useState({ name: '', email: '', phone: '', subject: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', subject: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { candidateId, register } = useCandidateStore();
@@ -100,6 +100,19 @@ export default function Register() {
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                 placeholder="you@example.com"
                 className="form-input"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="form-label">Residential Address</label>
+              <textarea
+                id="candidate-address"
+                rows={2}
+                value={form.address}
+                onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                placeholder="Enter your complete street address, city, state, pin code"
+                className="form-input resize-none py-2.5"
                 required
               />
             </div>

@@ -161,6 +161,14 @@ export default function Results() {
                           <p className="text-slate-500 text-xs truncate">{result.candidate?.email}</p>
                           <span className="text-slate-600 hidden sm:inline">•</span>
                           <p className="text-slate-500 text-xs">{result.candidate?.phone}</p>
+                          {result.candidate?.address && (
+                            <>
+                              <span className="text-slate-600 hidden sm:inline">•</span>
+                              <p className="text-slate-400 text-xs truncate max-w-xs" title={result.candidate.address}>
+                                📍 {result.candidate.address}
+                              </p>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
