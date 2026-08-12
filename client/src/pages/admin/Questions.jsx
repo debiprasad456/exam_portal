@@ -28,13 +28,13 @@ export default function Questions() {
 
   const load = () => {
     setLoading(true);
-    getAdminQuestions(filter)
+    getAdminQuestions()
       .then(({ data }) => setQuestions(data))
       .catch(() => {})
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [filter]);
+  useEffect(() => { load(); }, []);
 
   const openCreate = () => {
     setForm(EMPTY_FORM);
