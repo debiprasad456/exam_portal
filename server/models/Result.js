@@ -36,4 +36,7 @@ const resultSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+resultSchema.index({ candidate: 1 }, { unique: true });
+resultSchema.index({ subject: 1, percentage: -1 });
+
 module.exports = mongoose.model('Result', resultSchema);

@@ -195,7 +195,14 @@ export default function Dashboard() {
                       <span className="text-slate-500 text-xs ml-2">{SUBJECT_LABELS[r.subject]}</span>
                     </div>
                   </div>
-                  <span className="text-emerald-400 font-semibold text-sm">{r.percentage}%</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-emerald-400 font-semibold text-sm">{r.percentage}%</span>
+                    {r.createdAt && (
+                      <span className="text-slate-500 text-xs bg-white/5 px-2 py-0.5 rounded">
+                        {new Date(r.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

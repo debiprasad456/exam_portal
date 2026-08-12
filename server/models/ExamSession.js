@@ -28,4 +28,7 @@ const examSessionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+examSessionSchema.index({ subject: 1, status: 1, startedAt: -1 });
+examSessionSchema.index({ subject: 1, status: 1, createdAt: -1 });
+
 module.exports = mongoose.model('ExamSession', examSessionSchema);

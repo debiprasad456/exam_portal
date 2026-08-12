@@ -21,6 +21,7 @@ const { initSocket } = require('./socket/examSocket');
 const { setIO } = require('./socket/ioInstance');
 
 const app = express();
+app.set('trust proxy', 1);
 const httpServer = http.createServer(app);
 
 const allowedOrigins = (origin, callback) => {
@@ -68,9 +69,13 @@ initSocket(io);
 const PORT = process.env.PORT || 5000;
 
 mongoose
-  .connect(process.env.MONGO_URI)
+  .connect(process.env.MONGO_URI, {
+    maxPoolSize: 30,
+    minPoolSize: 5,
+    serverSelectionTimeoutMS: 5000,
+  })
   .then(() => {
-    console.log('✅ MongoDB connected');
+    console.log('✅ MongoDB connected (Pool Size: 30)');
     httpServer.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
     });

@@ -92,6 +92,15 @@ router.post('/register', async (req, res) => {
   }
 });
 
+// In-memory cache for questions per subject to handle 150-200 concurrent user exam start bursts
+const questionsCache = new Map();
+const CACHE_TTL_MS = 60 * 1000; // 1 minute
+
+const clearQuestionsCache = (subject) => {
+  if (subject) questionsCache.delete(subject);
+  else questionsCache.clear();
+};
+
 /**
  * GET /api/candidate/questions/:subject
  * Questions for candidates — correctIndex is EXCLUDED.
@@ -99,6 +108,13 @@ router.post('/register', async (req, res) => {
 router.get('/questions/:subject', async (req, res) => {
   try {
     const { subject } = req.params;
+
+    // Check in-memory cache
+    const cached = questionsCache.get(subject);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return res.json(cached.data);
+    }
+
     const questions = await Question.find({ subject })
       .select('-correctIndex')
       .sort({ createdAt: 1 })
@@ -107,6 +123,8 @@ router.get('/questions/:subject', async (req, res) => {
     if (!questions.length) {
       return res.status(404).json({ message: 'No questions found for this subject.' });
     }
+
+    questionsCache.set(subject, { data: questions, timestamp: Date.now() });
     res.json(questions);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -127,7 +145,7 @@ router.get('/exam-status', async (req, res) => {
       const session = await ExamSession.findOne({
         subject,
         status: { $in: ['waiting', 'active'] },
-      }).sort({ createdAt: -1 });
+      }).sort({ createdAt: -1 }).lean();
 
       const timer = activeTimers.get(subject);
       statusMap[subject] = {
@@ -150,7 +168,7 @@ router.get('/exam-status', async (req, res) => {
  */
 router.get('/candidate-session/:candidateId', async (req, res) => {
   try {
-    const candidate = await Candidate.findById(req.params.candidateId);
+    const candidate = await Candidate.findById(req.params.candidateId).lean();
     if (!candidate) {
       return res.status(404).json({ message: 'Candidate not found.' });
     }
@@ -158,7 +176,7 @@ router.get('/candidate-session/:candidateId', async (req, res) => {
     const session = await ExamSession.findOne({
       subject: candidate.subject,
       status: { $in: ['waiting', 'active'] },
-    }).sort({ createdAt: -1 });
+    }).sort({ createdAt: -1 }).lean();
 
     if (!session) {
       return res.json({ status: 'ended', duration: 0, timeLeft: 0 });
@@ -169,20 +187,21 @@ router.get('/candidate-session/:candidateId', async (req, res) => {
     }
 
     // Session is active. Record startedAt if candidate hasn't started yet
-    if (!candidate.startedAt) {
-      candidate.startedAt = new Date();
-      await candidate.save();
+    let startedAt = candidate.startedAt;
+    if (!startedAt) {
+      startedAt = new Date();
+      await Candidate.findByIdAndUpdate(candidate._id, { startedAt });
     }
 
     const duration = session.duration; // total duration in seconds
-    const elapsed = Math.floor((Date.now() - new Date(candidate.startedAt).getTime()) / 1000);
+    const elapsed = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
     const timeLeft = Math.max(0, duration - elapsed);
 
     res.json({
       status: 'active',
       duration,
       timeLeft,
-      startedAt: candidate.startedAt,
+      startedAt,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -312,4 +331,5 @@ router.post('/submit', async (req, res) => {
   }
 });
 
+router.clearQuestionsCache = clearQuestionsCache;
 module.exports = router;

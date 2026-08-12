@@ -9,6 +9,27 @@ const SUBJECTS = [
   { value: 'general_reasoning', label: 'General Reasoning', color: 'text-amber-300 bg-amber-500/10 border-amber-500/20' },
 ];
 
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return { date: 'N/A', time: 'N/A' };
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return { date: 'N/A', time: 'N/A' };
+
+  const date = d.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+
+  const time = d.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  });
+
+  return { date, time };
+};
+
 export default function Results() {
   const [results, setResults] = useState([]);
   const [filter, setFilter] = useState('');
@@ -114,14 +135,18 @@ export default function Results() {
               const isExpanded = expanded === result._id;
               const pct = result.percentage || 0;
               const isPassed = (result.score || 0) >= 12;
+              const submissionTime = result.createdAt || result.candidate?.createdAt;
+              const { date: subDate, time: subClock } = formatDateTime(submissionTime);
+
               return (
                 <div key={result._id} className="glass-card overflow-hidden">
                   {/* Result Row */}
                   <div
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 gap-3 cursor-pointer hover:bg-white/3 transition-colors"
+                    className="flex flex-col md:flex-row md:items-center justify-between p-4 sm:p-5 gap-3 sm:gap-4 cursor-pointer hover:bg-white/3 transition-colors"
                     onClick={() => toggleExpand(result._id)}
                   >
-                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                    {/* Candidate Info */}
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
                       {/* Avatar */}
                       <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-xs sm:text-sm font-bold text-white flex-shrink-0">
                         {result.candidate?.name?.[0]?.toUpperCase() || '?'}
@@ -140,7 +165,24 @@ export default function Results() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
+                    {/* Submission Date & Time Column */}
+                    <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center text-xs px-0 md:px-4 md:border-l border-white/5 py-2 md:py-0 border-t md:border-t-0 border-white/5 gap-1 min-w-[140px]">
+                      <div className="flex items-center gap-1.5 text-slate-300 font-medium">
+                        <svg className="w-3.5 h-3.5 text-primary-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span>{subDate}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
+                        <svg className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>{subClock}</span>
+                      </div>
+                    </div>
+
+                    {/* Score & Actions */}
+                    <div className="flex items-center justify-between md:justify-end gap-3 sm:gap-4 pt-2 md:pt-0 border-t md:border-t-0 border-white/5">
                       <span
                         className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${
                           isPassed
@@ -178,7 +220,13 @@ export default function Results() {
                   {/* Expanded: Per-question breakdown */}
                   {isExpanded && (
                     <div className="border-t border-white/5 px-5 pb-5 pt-4 animate-fade-in">
-                      <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-4">Answer Breakdown</p>
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-white/5">
+                        <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Answer Breakdown</p>
+                        <p className="text-xs text-slate-400 flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-md">
+                          <span>Submitted:</span>
+                          <span className="text-slate-200 font-medium">{subDate} at {subClock}</span>
+                        </p>
+                      </div>
                       <div className="space-y-3">
                         {result.answers.map((ans, i) => (
                           <div

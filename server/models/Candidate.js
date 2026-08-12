@@ -34,4 +34,7 @@ const candidateSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+candidateSchema.index({ email: 1, subject: 1 });
+candidateSchema.index({ subject: 1, hasSubmitted: 1 });
+
 module.exports = mongoose.model('Candidate', candidateSchema);

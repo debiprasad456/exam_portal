@@ -9,6 +9,8 @@ const Candidate = require('../models/Candidate');
 const { getIO } = require('../socket/ioInstance');
 const { startExamTimer, stopExamTimer, activeTimers } = require('../socket/examSocket');
 
+const candidateRoutes = require('./candidateRoutes');
+
 // All routes under /api/admin are protected
 router.use(auth);
 
@@ -22,7 +24,7 @@ router.get('/questions', async (req, res) => {
   try {
     const { subject } = req.query;
     const filter = subject ? { subject } : {};
-    const questions = await Question.find(filter).sort({ subject: 1, createdAt: -1 });
+    const questions = await Question.find(filter).sort({ subject: 1, createdAt: -1 }).lean();
     res.json(questions);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -48,6 +50,9 @@ router.post('/questions', async (req, res) => {
 
     const question = new Question({ subject, questionText, options, correctIndex });
     await question.save();
+    if (candidateRoutes.clearQuestionsCache) {
+      candidateRoutes.clearQuestionsCache(subject);
+    }
     res.status(201).json(question);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -67,6 +72,9 @@ router.put('/questions/:id', async (req, res) => {
       { new: true, runValidators: true }
     );
     if (!question) return res.status(404).json({ message: 'Question not found.' });
+    if (candidateRoutes.clearQuestionsCache) {
+      candidateRoutes.clearQuestionsCache(question.subject);
+    }
     res.json(question);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -81,6 +89,9 @@ router.delete('/questions/:id', async (req, res) => {
   try {
     const question = await Question.findByIdAndDelete(req.params.id);
     if (!question) return res.status(404).json({ message: 'Question not found.' });
+    if (candidateRoutes.clearQuestionsCache) {
+      candidateRoutes.clearQuestionsCache(question.subject);
+    }
     res.json({ message: 'Question deleted successfully.' });
   } catch (err) {
     res.status(500).json({ message: err.message });
