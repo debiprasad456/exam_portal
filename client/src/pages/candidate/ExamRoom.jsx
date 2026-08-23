@@ -5,7 +5,7 @@ import { getSocket } from '../../socket';
 import useCandidateStore from '../../stores/candidateStore';
 
 export default function ExamRoom() {
-  const { candidateId, subject, name, setSubmitted, hasSubmitted, clear } = useCandidateStore();
+  const { candidateId, subject, name, token, setSubmitted, hasSubmitted, clear } = useCandidateStore();
   const navigate = useNavigate();
 
   const [questions, setQuestions] = useState([]);
@@ -49,9 +49,9 @@ export default function ExamRoom() {
       })
       .catch(() => {});
 
-    // Socket for manual exam stop by admin
+    // Socket for manual exam stop by admin with authenticated join
     const socket = getSocket();
-    socket.emit('candidate:join', { subject });
+    socket.emit('candidate:join', { token, candidateId, subject });
 
     socket.on('exam:ended', ({ subject: s }) => {
       if (s === subject && !autoSubmitRef.current) {

@@ -4,14 +4,16 @@ const useCandidateStore = create((set) => ({
   candidateId: localStorage.getItem('candidateId') || null,
   name: localStorage.getItem('candidateName') || null,
   subject: localStorage.getItem('candidateSubject') || null,
+  token: localStorage.getItem('candidateToken') || null,
   hasSubmitted: localStorage.getItem('hasSubmitted') === 'true',
 
-  register: (candidateId, name, subject) => {
+  register: (candidateId, name, subject, token = null) => {
     localStorage.setItem('candidateId', candidateId);
     localStorage.setItem('candidateName', name);
     localStorage.setItem('candidateSubject', subject);
+    if (token) localStorage.setItem('candidateToken', token);
     localStorage.removeItem('hasSubmitted');
-    set({ candidateId, name, subject, hasSubmitted: false });
+    set({ candidateId, name, subject, token, hasSubmitted: false });
   },
 
   setSubmitted: () => {
@@ -23,8 +25,9 @@ const useCandidateStore = create((set) => ({
     localStorage.removeItem('candidateId');
     localStorage.removeItem('candidateName');
     localStorage.removeItem('candidateSubject');
+    localStorage.removeItem('candidateToken');
     localStorage.removeItem('hasSubmitted');
-    set({ candidateId: null, name: null, subject: null, hasSubmitted: false });
+    set({ candidateId: null, name: null, subject: null, token: null, hasSubmitted: false });
   },
 }));
 

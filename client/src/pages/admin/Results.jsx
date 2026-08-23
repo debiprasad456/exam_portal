@@ -33,6 +33,10 @@ const formatDateTime = (dateStr) => {
 export default function Results() {
   const [results, setResults] = useState([]);
   const [filter, setFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState('all'); // 'all', 'today', 'yesterday', 'last7days', 'custom'
+  const [customDate, setCustomDate] = useState('');
+  const [sortBy, setSortBy] = useState('newest'); // 'newest', 'oldest', 'score_desc', 'score_asc'
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -70,13 +74,94 @@ export default function Results() {
     }
   };
 
-  const filteredResults = filter ? results.filter((r) => r.subject === filter) : results;
-  const displayedResults = [...filteredResults].sort((a, b) => {
-    if ((b.percentage || 0) !== (a.percentage || 0)) {
-      return (b.percentage || 0) - (a.percentage || 0);
+  const getSubmissionTimestamp = (result) => {
+    const ts = result.createdAt || result.candidate?.createdAt;
+    return ts ? new Date(ts).getTime() : 0;
+  };
+
+  // Filter by subject
+  let filtered = results;
+  if (filter) {
+    filtered = filtered.filter((r) => r.subject === filter);
+  }
+
+  // Filter by search query (name, email, phone)
+  if (searchQuery.trim()) {
+    const q = searchQuery.toLowerCase().trim();
+    filtered = filtered.filter(
+      (r) =>
+        r.candidate?.name?.toLowerCase().includes(q) ||
+        r.candidate?.email?.toLowerCase().includes(q) ||
+        r.candidate?.phone?.includes(q) ||
+        r.candidate?.address?.toLowerCase().includes(q)
+    );
+  }
+
+  // Filter by date submitted
+  if (dateFilter !== 'all') {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const startOfYesterday = startOfToday - 24 * 60 * 60 * 1000;
+    const startOf7DaysAgo = startOfToday - 6 * 24 * 60 * 60 * 1000;
+
+    filtered = filtered.filter((r) => {
+      const timestamp = getSubmissionTimestamp(r);
+      if (!timestamp) return false;
+
+      if (dateFilter === 'today') {
+        return timestamp >= startOfToday;
+      }
+      if (dateFilter === 'yesterday') {
+        return timestamp >= startOfYesterday && timestamp < startOfToday;
+      }
+      if (dateFilter === 'last7days') {
+        return timestamp >= startOf7DaysAgo;
+      }
+      if (dateFilter === 'custom' && customDate) {
+        const d = new Date(timestamp);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const dateString = `${year}-${month}-${day}`;
+        return dateString === customDate;
+      }
+      return true;
+    });
+  }
+
+  // Sort by date/time or score
+  const displayedResults = [...filtered].sort((a, b) => {
+    const timeA = getSubmissionTimestamp(a);
+    const timeB = getSubmissionTimestamp(b);
+    const pctA = a.percentage || 0;
+    const pctB = b.percentage || 0;
+
+    if (sortBy === 'newest') {
+      return timeB - timeA;
     }
-    return (b.score || 0) - (a.score || 0);
+    if (sortBy === 'oldest') {
+      return timeA - timeB;
+    }
+    if (sortBy === 'score_desc') {
+      if (pctB !== pctA) return pctB - pctA;
+      return (b.score || 0) - (a.score || 0);
+    }
+    if (sortBy === 'score_asc') {
+      if (pctA !== pctB) return pctA - pctB;
+      return (a.score || 0) - (b.score || 0);
+    }
+    return timeB - timeA;
   });
+
+  const isFilterActive = filter || dateFilter !== 'all' || customDate || searchQuery || sortBy !== 'newest';
+
+  const resetAllFilters = () => {
+    setFilter('');
+    setDateFilter('all');
+    setCustomDate('');
+    setSearchQuery('');
+    setSortBy('newest');
+  };
 
   return (
     <div className="p-4 sm:p-6 md:p-8 page-bg min-h-full">
@@ -84,18 +169,32 @@ export default function Results() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-white">Exam Results</h1>
-            <p className="text-slate-400 text-xs sm:text-sm mt-1">{results.length} total submissions</p>
+            <p className="text-slate-400 text-xs sm:text-sm mt-1">
+              {displayedResults.length === results.length
+                ? `${results.length} total submissions`
+                : `Showing ${displayedResults.length} of ${results.length} submissions`}
+            </p>
           </div>
-          <button onClick={load} className="btn-ghost text-xs sm:text-sm px-3 sm:px-4 py-2 self-start sm:self-auto">
-            ↻ Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            {isFilterActive && (
+              <button
+                onClick={resetAllFilters}
+                className="px-3 py-2 text-xs sm:text-sm text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-colors border border-white/10"
+              >
+                ✕ Reset Filters
+              </button>
+            )}
+            <button onClick={load} className="btn-ghost text-xs sm:text-sm px-3 sm:px-4 py-2">
+              ↻ Refresh
+            </button>
+          </div>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex gap-2 mb-6 flex-wrap">
+        {/* Subject Filter Tabs */}
+        <div className="flex gap-2 mb-4 flex-wrap">
           <button
             onClick={() => setFilter('')}
-            className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${filter === '' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white bg-white/5'}`}
+            className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${filter === '' ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white bg-white/5'}`}
           >
             All ({results.length})
           </button>
@@ -105,12 +204,86 @@ export default function Results() {
               <button
                 key={s.value}
                 onClick={() => setFilter(s.value)}
-                className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${filter === s.value ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white bg-white/5'}`}
+                className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${filter === s.value ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white bg-white/5'}`}
               >
                 {s.label} ({cnt})
               </button>
             );
           })}
+        </div>
+
+        {/* Date & Time Submitted Filter & Controls Bar */}
+        <div className="glass-card p-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
+            
+            {/* Search Bar */}
+            <div className="lg:col-span-4 relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search candidate name, email..."
+                className="form-input text-xs sm:text-sm pl-9 py-2 w-full"
+              />
+            </div>
+
+            {/* Date Filter Dropdown */}
+            <div className="lg:col-span-4 flex items-center gap-2">
+              <div className="relative flex-1">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <svg className="w-4 h-4 text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <select
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                  className="form-input text-xs sm:text-sm pl-9 py-2 w-full appearance-none cursor-pointer"
+                >
+                  <option value="all" className="bg-dark-800 text-white">📅 All Dates</option>
+                  <option value="today" className="bg-dark-800 text-white">📅 Submitted Today</option>
+                  <option value="yesterday" className="bg-dark-800 text-white">📅 Submitted Yesterday</option>
+                  <option value="last7days" className="bg-dark-800 text-white">📅 Last 7 Days</option>
+                  <option value="custom" className="bg-dark-800 text-white">📅 Specific Date (Pick)</option>
+                </select>
+              </div>
+
+              {/* Specific Date Picker Input */}
+              {dateFilter === 'custom' && (
+                <input
+                  type="date"
+                  value={customDate}
+                  onChange={(e) => setCustomDate(e.target.value)}
+                  className="form-input text-xs sm:text-sm py-1.5 px-3 w-40 cursor-pointer"
+                />
+              )}
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="lg:col-span-4 relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <svg className="w-4 h-4 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                </svg>
+              </div>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="form-input text-xs sm:text-sm pl-9 py-2 w-full appearance-none cursor-pointer"
+              >
+                <option value="newest" className="bg-dark-800 text-white">🕒 Latest Submitted (Newest first)</option>
+                <option value="oldest" className="bg-dark-800 text-white">⏱ Oldest Submitted (Earliest first)</option>
+                <option value="score_desc" className="bg-dark-800 text-white">🏆 Highest Score (% first)</option>
+                <option value="score_asc" className="bg-dark-800 text-white">📉 Lowest Score (% first)</option>
+              </select>
+            </div>
+
+          </div>
         </div>
 
         {loading ? (

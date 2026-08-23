@@ -29,7 +29,7 @@ export default function Register() {
     setLoading(true);
     try {
       const { data } = await registerCandidate(form);
-      register(data.candidateId, data.name, data.subject);
+      register(data.candidateId, data.name, data.subject, data.token);
       navigate('/waiting');
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');

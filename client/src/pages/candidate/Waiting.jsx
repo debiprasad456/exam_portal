@@ -14,7 +14,7 @@ const SUBJECT_LABELS = {
 const SUBJECT_ICONS = { marketing: '📈', hr: '🤝', digital_marketing: '💻', general_reasoning: '🧠' };
 
 export default function Waiting() {
-  const { candidateId, name, subject, clear } = useCandidateStore();
+  const { candidateId, name, subject, token, clear } = useCandidateStore();
   const [status, setStatus] = useState('waiting');
   const [dots, setDots] = useState('');
   const navigate = useNavigate();
@@ -34,9 +34,9 @@ export default function Waiting() {
       })
       .catch(() => {});
 
-    // Connect socket
+    // Connect socket with authenticated join
     const socket = getSocket();
-    socket.emit('candidate:join', { subject });
+    socket.emit('candidate:join', { token, candidateId, subject });
 
     socket.on('exam:started', ({ subject: startedSubject }) => {
       if (startedSubject === subject) {

@@ -24,13 +24,33 @@ const app = express();
 app.set('trust proxy', 1);
 const httpServer = http.createServer(app);
 
-const allowedOrigins = (origin, callback) => {
-  // Allow requests with no origin (like mobile apps, curl, or server-to-server) or any origin dynamically
-  callback(null, true);
+const rawAllowedOrigins = process.env.CLIENT_URL
+  ? process.env.CLIENT_URL.split(',').map((o) => o.trim())
+  : [];
+
+const defaultAllowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  'http://localhost:5000',
+  'https://candidate-examination-portal.vercel.app',
+];
+
+const allowedOriginSet = new Set([...rawAllowedOrigins, ...defaultAllowedOrigins]);
+
+const corsOriginValidator = (origin, callback) => {
+  // Allow requests with no origin (like mobile apps, curl, Postman, server-to-server, health check)
+  if (!origin) return callback(null, true);
+
+  if (allowedOriginSet.has(origin) || (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost:'))) {
+    return callback(null, true);
+  }
+
+  return callback(new Error(`CORS error: Origin ${origin} is not allowed`));
 };
 
 const corsOptions = {
-  origin: allowedOrigins,
+  origin: corsOriginValidator,
   credentials: true,
 };
 

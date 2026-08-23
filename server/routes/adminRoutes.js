@@ -7,7 +7,7 @@ const ExamSession = require('../models/ExamSession');
 const Result = require('../models/Result');
 const Candidate = require('../models/Candidate');
 const { getIO } = require('../socket/ioInstance');
-const { startExamTimer, stopExamTimer, activeTimers } = require('../socket/examSocket');
+const { startExamTimer, stopExamTimer } = require('../socket/examSocket');
 
 const candidateRoutes = require('./candidateRoutes');
 

@@ -1,10 +1,24 @@
 const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
 const Candidate = require('../models/Candidate');
 const Question = require('../models/Question');
 const Result = require('../models/Result');
 const ExamSession = require('../models/ExamSession');
 const { getIO } = require('../socket/ioInstance');
+
+const generateCandidateToken = (candidate) => {
+  return jwt.sign(
+    {
+      candidateId: candidate._id.toString(),
+      subject: candidate.subject,
+      email: candidate.email,
+      role: 'candidate',
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+};
 
 /**
  * POST /api/candidate/register
@@ -46,10 +60,12 @@ router.post('/register', async (req, res) => {
           return res.status(400).json({ message: 'You have already taken this exam.' });
         }
         // Re-use existing registration (reconnect)
+        const token = generateCandidateToken(candidateWithSameEmail);
         return res.json({
           candidateId: candidateWithSameEmail._id,
           name: candidateWithSameEmail.name,
           subject: candidateWithSameEmail.subject,
+          token,
           message: 'Welcome back!',
         });
       }
@@ -65,10 +81,12 @@ router.post('/register', async (req, res) => {
       if (submitted) {
         return res.status(400).json({ message: 'You have already taken this exam.' });
       }
+      const token = generateCandidateToken(existing);
       return res.json({
         candidateId: existing._id,
         name: existing.name,
         subject: existing.subject,
+        token,
         message: 'Welcome back!',
       });
     }
@@ -82,10 +100,13 @@ router.post('/register', async (req, res) => {
     });
     await candidate.save();
 
+    const token = generateCandidateToken(candidate);
+
     res.status(201).json({
       candidateId: candidate._id,
       name: candidate.name,
       subject: candidate.subject,
+      token,
       message: 'Registered successfully! Please wait for the exam to begin.',
     });
   } catch (err) {
@@ -135,10 +156,10 @@ router.get('/questions/:subject', async (req, res) => {
 /**
  * GET /api/candidate/exam-status
  * Current exam session statuses for all subjects.
+ * Authoritative from MongoDB ExamSession.
  */
 router.get('/exam-status', async (req, res) => {
   try {
-    const { activeTimers } = require('../socket/examSocket');
     const subjects = ['marketing', 'hr', 'digital_marketing', 'general_reasoning'];
     const statusMap = {};
 
@@ -148,10 +169,15 @@ router.get('/exam-status', async (req, res) => {
         status: { $in: ['waiting', 'active'] },
       }).sort({ createdAt: -1 }).lean();
 
-      const timer = activeTimers.get(subject);
+      let timeLeft = 0;
+      if (session && session.status === 'active') {
+        const elapsed = session.startedAt ? Math.floor((Date.now() - new Date(session.startedAt).getTime()) / 1000) : 0;
+        timeLeft = Math.max(0, (session.duration || 0) - elapsed);
+      }
+
       statusMap[subject] = {
         status: session ? session.status : 'waiting',
-        timeLeft: timer ? timer.timeLeft : 0,
+        timeLeft,
         sessionId: session ? session.sessionId : null,
         duration: session ? session.duration : 0,
       };
