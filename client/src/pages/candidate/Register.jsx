@@ -43,10 +43,8 @@ export default function Register() {
       <div className="w-full max-w-2xl animate-slide-up">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 mb-4 shadow-lg shadow-primary-500/30">
-            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
+          <div className="inline-flex items-center justify-center px-4 py-2 rounded-2xl bg-dark-800/90 border border-white/10 mb-4 shadow-xl shadow-primary-500/15">
+            <img src="/Logo1.jpg" alt="DS Logo" className="h-12 w-auto max-w-[160px] object-contain rounded-lg" />
           </div>
           <h1 className="text-3xl font-bold gradient-text">DS Exam Portal</h1>
           <p className="text-slate-400 mt-2">Register to begin your examination</p>
