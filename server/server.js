@@ -79,7 +79,16 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/candidate', candidateRoutes);
 
-// Health check
+// Root status & Health check
+app.get('/', (req, res) => {
+  res.json({
+    service: 'Diverse Solutions Exam Portal API',
+    status: 'Online & Operational',
+    version: '1.0.0',
+    health: '/health',
+    timestamp: new Date().toISOString(),
+  });
+});
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date() }));
 
 // Init Socket.IO
