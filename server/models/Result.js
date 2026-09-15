@@ -32,6 +32,9 @@ const resultSchema = new mongoose.Schema(
     score: { type: Number, default: 0 },
     totalQuestions: { type: Number, default: 0 },
     percentage: { type: Number, default: 0 },
+    emailSent: { type: Boolean, default: false },
+    emailSentAt: { type: Date },
+    emailError: { type: String },
   },
   { timestamps: true }
 );

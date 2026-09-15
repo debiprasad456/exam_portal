@@ -6,6 +6,7 @@ const Question = require('../models/Question');
 const Result = require('../models/Result');
 const ExamSession = require('../models/ExamSession');
 const { getIO } = require('../socket/ioInstance');
+const emailService = require('../services/emailService');
 
 const generateCandidateToken = (candidate) => {
   return jwt.sign(
@@ -336,6 +337,29 @@ router.post('/submit', async (req, res) => {
 
     // Mark candidate as submitted
     await Candidate.findByIdAndUpdate(candidateId, { hasSubmitted: true });
+
+    // Send automated scorecard email asynchronously (non-blocking)
+    emailService
+      .sendExamResultEmail({
+        candidate,
+        result,
+        subjectTitle: emailService.getSubjectName(subject),
+      })
+      .then(async (sendRes) => {
+        if (sendRes?.sent) {
+          await Result.findByIdAndUpdate(result._id, {
+            emailSent: true,
+            emailSentAt: new Date(),
+          });
+        }
+      })
+      .catch(async (err) => {
+        console.error('❌ Failed to send automated exam result email:', err.message);
+        await Result.findByIdAndUpdate(result._id, {
+          emailSent: false,
+          emailError: err.message,
+        }).catch(() => {});
+      });
 
     // Emit live result to admin room
     try {

@@ -14,6 +14,12 @@ const adminSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    resetPasswordOtp: {
+      type: String,
+    },
+    resetPasswordExpires: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );

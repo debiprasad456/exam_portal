@@ -8,6 +8,7 @@ const Result = require('../models/Result');
 const Candidate = require('../models/Candidate');
 const { getIO } = require('../socket/ioInstance');
 const { startExamTimer, stopExamTimer } = require('../socket/examSocket');
+const emailService = require('../services/emailService');
 
 const candidateRoutes = require('./candidateRoutes');
 
@@ -251,4 +252,156 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+/* ─────────────────────────── EMAIL & NOTIFICATIONS ─────────────────────────── */
+
+/**
+ * GET /api/admin/email/status
+ * Check if SMTP is configured and verify live connection.
+ */
+router.get('/email/status', async (req, res) => {
+  try {
+    const configured = emailService.isConfigured();
+    if (!configured) {
+      return res.json({
+        configured: false,
+        connected: false,
+        message: 'SMTP credentials (SMTP_USER or SMTP_PASS) not configured in server environment.',
+      });
+    }
+
+    const verification = await emailService.verifySMTP();
+    res.json({
+      configured: true,
+      connected: verification.success,
+      message: verification.message,
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: process.env.SMTP_PORT || '465',
+      user: process.env.SMTP_USER,
+      fromName: process.env.SMTP_FROM_NAME || 'Diverse Solutions Exam Portal',
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/**
+ * POST /api/admin/email/test
+ * Send a test email to verify SMTP delivery.
+ */
+router.post('/email/test', async (req, res) => {
+  try {
+    const { toEmail } = req.body;
+    const target = (toEmail || process.env.SMTP_USER || '').trim();
+    if (!target) {
+      return res.status(400).json({ message: 'Recipient email is required.' });
+    }
+
+    const result = await emailService.sendTestEmail(target);
+    res.json({
+      message: `Test email sent successfully to ${target}!`,
+      messageId: result.messageId,
+    });
+  } catch (err) {
+    console.error('Test email failed:', err);
+    res.status(500).json({ message: err.message || 'Failed to send test email.' });
+  }
+});
+
+/**
+ * POST /api/admin/email/send-result/:id
+ * Manually send / resend exam scorecard to a candidate.
+ */
+router.post('/email/send-result/:id', async (req, res) => {
+  try {
+    const result = await Result.findById(req.params.id).populate('candidate');
+    if (!result) {
+      return res.status(404).json({ message: 'Result not found.' });
+    }
+    if (!result.candidate || !result.candidate.email) {
+      return res.status(400).json({ message: 'Candidate or candidate email not found for this result.' });
+    }
+
+    const sendRes = await emailService.sendExamResultEmail({
+      candidate: result.candidate,
+      result,
+      subjectTitle: emailService.getSubjectName(result.subject),
+    });
+
+    if (sendRes.sent) {
+      result.emailSent = true;
+      result.emailSentAt = new Date();
+      result.emailError = undefined;
+      await result.save();
+
+      return res.json({
+        message: `Scorecard sent successfully to ${result.candidate.email}!`,
+        emailSentAt: result.emailSentAt,
+      });
+    } else {
+      result.emailSent = false;
+      result.emailError = sendRes.reason;
+      await result.save();
+      return res.status(500).json({ message: sendRes.reason || 'Failed to send scorecard email.' });
+    }
+  } catch (err) {
+    console.error('Send result email error:', err);
+    res.status(500).json({ message: err.message || 'Failed to send scorecard email.' });
+  }
+});
+
+/**
+ * POST /api/admin/email/send-results-bulk
+ * Bulk send scorecards to multiple candidates.
+ */
+router.post('/email/send-results-bulk', async (req, res) => {
+  try {
+    const { resultIds } = req.body;
+    if (!Array.isArray(resultIds) || !resultIds.length) {
+      return res.status(400).json({ message: 'Array of resultIds is required.' });
+    }
+
+    const results = await Result.find({ _id: { $in: resultIds } }).populate('candidate');
+    let successful = 0;
+    let failed = 0;
+    const errors = [];
+
+    for (const r of results) {
+      if (!r.candidate || !r.candidate.email) {
+        failed++;
+        continue;
+      }
+      try {
+        const sendRes = await emailService.sendExamResultEmail({
+          candidate: r.candidate,
+          result: r,
+          subjectTitle: emailService.getSubjectName(r.subject),
+        });
+        if (sendRes.sent) {
+          r.emailSent = true;
+          r.emailSentAt = new Date();
+          r.emailError = undefined;
+          await r.save();
+          successful++;
+        } else {
+          failed++;
+          errors.push({ id: r._id, error: sendRes.reason });
+        }
+      } catch (e) {
+        failed++;
+        errors.push({ id: r._id, error: e.message });
+      }
+    }
+
+    res.json({
+      message: `Processed bulk delivery: ${successful} sent, ${failed} failed.`,
+      successful,
+      failed,
+      errors,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;
+

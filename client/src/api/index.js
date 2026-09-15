@@ -25,6 +25,9 @@ export const checkAdminExists = () => api.get('/auth/admin-exists');
 export const adminSetup = (email, password) => api.post('/auth/setup', { email, password });
 export const adminLogin = (email, password) => api.post('/auth/login', { email, password });
 export const verifyToken = () => api.get('/auth/verify');
+export const forgotPassword = (email) => api.post('/auth/forgot-password', { email });
+export const resetPassword = (email, otp, newPassword) =>
+  api.post('/auth/reset-password', { email, otp, newPassword });
 
 // ─── Admin: Questions ───
 export const getAdminQuestions = (subject = '') =>
@@ -44,6 +47,12 @@ export const getResults = (subject = '') =>
   api.get('/admin/results', { params: subject ? { subject } : {} });
 export const deleteResult = (id) => api.delete(`/admin/results/${id}`);
 export const getStats = () => api.get('/admin/stats');
+
+// ─── Admin: Email & SMTP ───
+export const getSmtpStatus = () => api.get('/admin/email/status');
+export const testSmtpConnection = (toEmail) => api.post('/admin/email/test', { toEmail });
+export const sendResultEmail = (id) => api.post(`/admin/email/send-result/${id}`);
+export const sendBulkResultEmails = (resultIds) => api.post('/admin/email/send-results-bulk', { resultIds });
 
 // ─── Candidate ───
 export const registerCandidate = (data) => api.post('/candidate/register', data);

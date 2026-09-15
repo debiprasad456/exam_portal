@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getResults, deleteResult } from '../../api';
+import { getResults, deleteResult, sendResultEmail, sendBulkResultEmails } from '../../api';
 import useExamStore from '../../stores/examStore';
 
 const SUBJECTS = [
@@ -41,6 +41,9 @@ export default function Results() {
   const [expanded, setExpanded] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [sendingEmailId, setSendingEmailId] = useState(null);
+  const [bulkSending, setBulkSending] = useState(false);
+  const [emailToast, setEmailToast] = useState(null); // { type: 'success' | 'error', text: '' }
   const { liveResults } = useExamStore();
 
   const load = () => {
@@ -52,6 +55,49 @@ export default function Results() {
   };
 
   useEffect(() => { load(); }, [liveResults.length]);
+
+  const handleSendSingleEmail = async (id) => {
+    setSendingEmailId(id);
+    setEmailToast(null);
+    try {
+      const { data } = await sendResultEmail(id);
+      setEmailToast({ type: 'success', text: data.message || 'Scorecard sent successfully!' });
+      setResults((prev) =>
+        prev.map((r) => (r._id === id ? { ...r, emailSent: true, emailSentAt: data.emailSentAt || new Date() } : r))
+      );
+    } catch (err) {
+      setEmailToast({
+        type: 'error',
+        text: err.response?.data?.message || 'Failed to dispatch scorecard email.',
+      });
+    } finally {
+      setSendingEmailId(null);
+    }
+  };
+
+  const handleBulkSendUnsent = async () => {
+    const unsent = displayedResults.filter((r) => !r.emailSent);
+    if (!unsent.length) return;
+    if (!window.confirm(`Send official scorecards to ${unsent.length} candidate(s)?`)) return;
+
+    setBulkSending(true);
+    setEmailToast(null);
+    try {
+      const { data } = await sendBulkResultEmails(unsent.map((r) => r._id));
+      setEmailToast({
+        type: 'success',
+        text: data.message || `Processed bulk delivery: ${data.successful} sent, ${data.failed} failed.`,
+      });
+      load();
+    } catch (err) {
+      setEmailToast({
+        type: 'error',
+        text: err.response?.data?.message || 'Bulk email delivery failed.',
+      });
+    } finally {
+      setBulkSending(false);
+    }
+  };
 
   const toggleExpand = (id) => setExpanded((prev) => (prev === id ? null : id));
 
@@ -163,6 +209,8 @@ export default function Results() {
     setSortBy('newest');
   };
 
+  const unsentCount = displayedResults.filter((r) => !r.emailSent).length;
+
   return (
     <div className="p-4 sm:p-6 md:p-8 page-bg min-h-full">
       <div className="max-w-6xl mx-auto">
@@ -175,7 +223,7 @@ export default function Results() {
                 : `Showing ${displayedResults.length} of ${results.length} submissions`}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {isFilterActive && (
               <button
                 onClick={resetAllFilters}
@@ -184,11 +232,56 @@ export default function Results() {
                 ✕ Reset Filters
               </button>
             )}
+            {unsentCount > 0 && (
+              <button
+                onClick={handleBulkSendUnsent}
+                disabled={bulkSending}
+                className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-primary-500 hover:bg-primary-600 text-white flex items-center gap-1.5 shadow-lg shadow-primary-500/20 disabled:opacity-50 transition-all"
+                title={`Send scorecard email to ${unsentCount} candidate(s) who have not received it yet`}
+              >
+                {bulkSending ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Sending ({unsentCount})...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span>Email Unsent ({unsentCount})</span>
+                  </>
+                )}
+              </button>
+            )}
             <button onClick={load} className="btn-ghost text-xs sm:text-sm px-3 sm:px-4 py-2">
               ↻ Refresh
             </button>
           </div>
         </div>
+
+        {/* Email feedback alert */}
+        {emailToast && (
+          <div
+            className={`mb-5 p-3.5 rounded-xl text-xs sm:text-sm border flex items-center justify-between animate-fade-in ${
+              emailToast.type === 'success'
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+                : 'bg-red-500/10 border-red-500/20 text-red-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span>{emailToast.type === 'success' ? '✅' : '⚠️'}</span>
+              <span>{emailToast.text}</span>
+            </div>
+            <button
+              onClick={() => setEmailToast(null)}
+              className="opacity-70 hover:opacity-100 p-1 text-slate-400 hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
 
         {/* Subject Filter Tabs */}
         <div className="flex gap-2 mb-4 flex-wrap">
@@ -329,6 +422,18 @@ export default function Results() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-white font-semibold text-sm sm:text-base truncate">{result.candidate?.name}</p>
                           <span className={`badge border text-xs px-2.5 py-0.5 ${subj?.color}`}>{subj?.label}</span>
+                          {result.emailSent ? (
+                            <span
+                              className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded flex items-center gap-1"
+                              title={`Scorecard delivered at ${result.emailSentAt ? new Date(result.emailSentAt).toLocaleString() : 'N/A'}`}
+                            >
+                              ✉️ Sent
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-medium text-slate-400 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                              ✉️ Unsent
+                            </span>
+                          )}
                         </div>
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
                           <p className="text-slate-500 text-xs truncate">{result.candidate?.email}</p>
@@ -363,7 +468,7 @@ export default function Results() {
                     </div>
 
                     {/* Score & Actions */}
-                    <div className="flex items-center justify-between md:justify-end gap-3 sm:gap-4 pt-2 md:pt-0 border-t md:border-t-0 border-white/5">
+                    <div className="flex items-center justify-between md:justify-end gap-2.5 sm:gap-3.5 pt-2 md:pt-0 border-t md:border-t-0 border-white/5">
                       <span
                         className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${
                           isPassed
@@ -377,6 +482,35 @@ export default function Results() {
                         <p className={`text-lg sm:text-xl font-bold ${getScoreColor(pct)}`}>{pct}%</p>
                         <p className="text-slate-500 text-xs">{result.score}/{result.totalQuestions} correct</p>
                       </div>
+
+                      {/* Email Scorecard Action */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSendSingleEmail(result._id);
+                        }}
+                        disabled={sendingEmailId === result._id}
+                        className={`p-2 rounded-lg transition-all border ${
+                          result.emailSent
+                            ? 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 border-emerald-500/20'
+                            : 'text-slate-400 hover:text-primary-400 hover:bg-primary-500/10 border-transparent hover:border-primary-500/20'
+                        }`}
+                        title={
+                          result.emailSent
+                            ? `Scorecard sent (${result.emailSentAt ? new Date(result.emailSentAt).toLocaleString() : 'Yes'}). Click to resend.`
+                            : 'Send scorecard to candidate email'
+                        }
+                      >
+                        {sendingEmailId === result._id ? (
+                          <div className="w-5 h-5 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                        )}
+                      </button>
+
                       <button
                         type="button"
                         onClick={(e) => {
