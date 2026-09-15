@@ -1,43 +1,75 @@
 # 🎓 Full-Stack Online Exam & Proctoring Portal
 
-A real-time, secure, full-stack Online Examination and Proctoring System built with **React 18**, **Vite**, **Node.js**, **Express**, **MongoDB Atlas**, **Socket.io**, and **Tailwind CSS**.
+A real-time, high-concurrency, full-stack Online Examination and Proctoring System built with **React 18**, **Vite**, **Node.js**, **Express**, **MongoDB Atlas**, **Socket.io**, and **Tailwind CSS**.
 
-Designed for educational institutions, corporate hiring, and organizational assessments, this platform features an intuitive **Admin Control Center** for real-time exam management and a seamless **Candidate Interface** with individual candidate countdown timers, automatic evaluation, and live proctoring.
-
----
-
-## 🚀 Live Demo & Production Architecture
-
-| Service | Technology | Live URL |
-| :--- | :--- | :--- |
-| **Frontend Client** | React 18 + Vite (Vercel) | [https://candidate-examination-portal.vercel.app](https://candidate-examination-portal.vercel.app) |
-| **Backend API & WebSockets** | Node.js + Express + Socket.IO (Render) | [https://exam-portal-server-tliz.onrender.com](https://exam-portal-server-tliz.onrender.com) |
-| **Database** | MongoDB Atlas Cloud | Managed Cloud Cluster |
+Designed for educational institutions, university campus drives, corporate recruitment, and organizational assessments. The platform features an intuitive **Admin Control Center** for live exam administration and a robust **Candidate Portal** equipped with independent per-student timers, automatic evaluation, and instant official scorecard email delivery.
 
 ---
 
-## 🌟 Key Features
+## 🚀 Live Production Deployment
+
+| Component | Technology | Hosting | Production URL |
+| :--- | :--- | :--- | :--- |
+| **Frontend Client** | React 18 + Vite + Tailwind | Vercel | [https://candidate-examination-portal.vercel.app](https://candidate-examination-portal.vercel.app) |
+| **Backend API & WebSockets** | Node.js + Express + Socket.IO | Render | [https://exam-portal-server-tliz.onrender.com](https://exam-portal-server-tliz.onrender.com) |
+| **Database** | MongoDB Atlas Cloud Cluster | AWS | Managed Cloud Database |
+| **Email Gateway** | Brevo HTTPS API (Port 443) / Nodemailer | Cloud / Local | Dual Engine (HTTPS REST + SMTP) |
+
+---
+
+## 🌟 Key Features & Updates
 
 ### 👑 Admin Control Center
-- **Concurrent Multi-Exam Management**: Start independent live exam sessions for multiple subjects concurrently (Marketing, HR, Digital Marketing, General Reasoning).
-- **Manual Exam Session Lifecycle**: Admin exam sessions stay active until explicitly terminated via **Stop Exam**, allowing candidate attempts to proceed without artificial server cutoffs.
-- **Question Bank Management**: Filter, add, edit, and delete Multiple Choice Questions (MCQs) per subject.
-- **Results Management & Record Deletion**:
-  - Auto-scored candidate performance breakdown.
-  - Cascading deletion of individual result records and associated candidate documents directly from MongoDB.
-- **Live Real-Time Dashboard**: Visual score distribution charts, total candidate metrics, and active session indicators via WebSockets.
-- **Enhanced Security**: Auth role toggle switch and password show/hide eye control on admin login/setup screens.
-
-### 📝 Candidate Exam Portal
-- **Supported Exam Subjects**:
+- **Concurrent Multi-Subject Exams**: Admin can start and monitor independent live exam sessions across subjects:
   - 📈 **Marketing**
   - 🤝 **Human Resources (HR)**
   - 💻 **Digital Marketing**
   - 🧠 **General Reasoning**
-- **Independent Per-Candidate Timers**: Every candidate gets their full allocated exam duration (e.g., 30m / 60m) starting from the exact moment they enter the exam room.
-- **Auto-Submission Engine**: Automatic submission upon time expiry or when force-ended by admin.
-- **Unassigned Questions Handling**: Graceful validation prevents candidates from taking exams without assigned questions, displaying a clean return interface (**← Back to Candidate Login**) and automatically cleaning up draft candidate records from database.
-- **Real-Time Waiting Room**: Automatic transition into the active exam room as soon as admin starts the exam session.
+- **Manual Exam Session Lifecycle**: Sessions stay live until explicitly concluded by the administrator, avoiding arbitrary server cutoffs.
+- **Admin Password Recovery Flow (2-Step OTP)**:
+  - Secure 6-digit numeric verification code generated and stored with a 15-minute TTL in MongoDB.
+  - Automatic OTP dispatch to admin email with password reset modal directly in the login view.
+- **Question Bank Management**:
+  - Filter questions by subject.
+  - Add, edit, and delete Multiple Choice Questions (MCQs).
+  - Accurate question count validation and error handling.
+- **Live Results & Leaderboard**:
+  - **Ranked Descending Sort**: Top scorers automatically appear at the top.
+  - **Date Range Filtering**: Filter candidate attempts by submission date and time.
+  - **Comprehensive Candidate Metadata**: View candidate name, email, phone, residential address, subject, score, percentage, and submission timestamp.
+  - **Cascading Deletion**: Delete individual candidate records and associated result records with a single click.
+- **Live Real-Time Dashboard**: Visual score distribution cards, active candidate count, and WebSocket-driven session monitors.
+
+---
+
+### 📝 Candidate Exam Experience
+- **Independent Per-Candidate Countdown Timers**: Every candidate receives their full exam duration (e.g. 30m / 60m) starting from the exact second they enter the exam room.
+- **Candidate Registration**: Includes full name, email, phone number, subject selection, and physical address.
+- **Unassigned Questions Safeguard**: Prevents candidates from taking exams without configured questions, displaying a clean return interface and purging orphan candidate records.
+- **Auto-Submission Engine**: Automatically grades and saves candidate answers upon timer expiration or admin force-stop.
+- **Instant Official Scorecard Email**: Sends a beautifully styled HTML exam result scorecard directly to the student's email inbox upon submission.
+- **Mobile-Responsive Interface**: Fluid layout optimized for mobile screens, tablets, and desktop browsers.
+
+---
+
+### ✉️ Dual-Engine Email & Notification System
+To solve cloud firewall restrictions (e.g., Render blocking outbound SMTP ports 25, 465, and 587):
+1. **Cloud Production (Port 443 - HTTPS REST API)**:
+   - **Brevo (Sendinblue)**: Native REST API integration over HTTPS port 443 (`BREVO_API_KEY`). Sends up to 300 emails/day to any recipient domain without port blocking or connection timeouts.
+   - **Resend**: HTTPS REST API integration (`RESEND_API_KEY`).
+2. **Local Development (SMTP Socket)**:
+   - Automatic fallback to **Nodemailer SMTP** (Gmail / custom SMTP on Port 465/587) when running locally.
+3. **Admin Email Diagnostics**:
+   - In-app SMTP status probe (`GET /api/admin/email/status`).
+   - One-click test email dispatcher (`POST /api/admin/email/test`).
+
+---
+
+### 🛡️ Concurrency, Networking & Security
+- **High-Concurrency Campus Scaling**: Rate limiter configured to handle **10,000 requests per 15-minute window**, allowing 150+ students on a shared campus Wi-Fi/lab public IP without 429 rate-limit drops.
+- **Dynamic CORS Origin Whitelisting**: Automatically validates `localhost`, all `*.vercel.app` preview and production deployments, and custom domains.
+- **Proxy Trust (`trust proxy: 1`)**: Ensures accurate client IP tracking behind cloud reverse proxies (Render and Vercel).
+- **MongoDB Connection Resilience**: Connection pool sizing (`maxPoolSize: 30`, `minPoolSize: 5`) with fallback public DNS resolvers (`8.8.8.8`, `1.1.1.1`) for SRV record lookup reliability.
 
 ---
 
@@ -47,16 +79,18 @@ Designed for educational institutions, corporate hiring, and organizational asse
 - **Framework**: [React 18](https://react.dev/) + [Vite](https://vitejs.dev/)
 - **State Management**: [Zustand](https://zustand-demo.pmnd.rs/)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/)
-- **Real-Time WebSockets**: `socket.io-client`
+- **Real-Time Client**: `socket.io-client`
 - **HTTP Client**: `axios`
-- **Routing**: `react-router-dom` with `vercel.json` SPA rewrites
+- **Routing**: `react-router-dom` with SPA rewrites (`vercel.json`)
+- **Icons & Visuals**: `lucide-react`, Custom high-res portal branding
 
 ### **Backend (`server/`)**
-- **Runtime**: [Node.js](https://nodejs.org/)
+- **Runtime**: [Node.js](https://nodejs.org/) (v18+)
 - **Framework**: [Express.js](https://expressjs.com/)
-- **Database**: [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) (Mongoose ODM)
-- **WebSockets**: `socket.io` (Real-time event broadcasting)
-- **Security & Auth**: `jsonwebtoken` (JWT), `bcryptjs`, dynamic CORS credentials handling
+- **Database**: [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) via [Mongoose ODM](https://mongoosejs.com/)
+- **Real-Time WebSockets**: [Socket.IO](https://socket.io/)
+- **Authentication**: `jsonwebtoken` (JWT), `bcryptjs`
+- **Email Delivery**: Brevo HTTPS API, Resend REST API, Nodemailer
 
 ---
 
@@ -64,28 +98,78 @@ Designed for educational institutions, corporate hiring, and organizational asse
 
 ```text
 exam_portal/
-├── client/                   # Frontend React Application (Vite)
-│   ├── public/               # Static Assets
+├── client/                     # Frontend React Application (Vite)
+│   ├── public/                 # Static Assets (Logos, Icons)
 │   ├── src/
-│   │   ├── api/              # Axios API Client & Base Configuration
-│   │   ├── components/       # Reusable Components (Role Toggle, Modals, Badges)
-│   │   ├── pages/            # Page Views
-│   │   │   ├── admin/        # Admin Views (Dashboard, ExamControl, Questions, Results, Login)
-│   │   │   └── candidate/    # Candidate Views (Register, Waiting, ExamRoom, ThankYou)
-│   │   ├── socket/           # Client Socket.IO Initialization
-│   │   └── stores/           # Zustand Global State Stores (examStore, candidateStore, authStore)
-│   ├── vercel.json           # Vercel Single-Page Application (SPA) Rewrite Config
-│   └── vite.config.js        # Vite Config
+│   │   ├── api/                # Axios API Client & Base Endpoints
+│   │   ├── components/         # Reusable UI Components & Modals
+│   │   ├── pages/              # Views
+│   │   │   ├── admin/          # Dashboard, ExamControl, Questions, Results, Login
+│   │   │   └── candidate/      # Register, WaitingRoom, ExamRoom, ThankYou
+│   │   ├── socket/             # Socket.IO Client Configuration
+│   │   └── stores/             # Zustand State Stores (exam, candidate, auth)
+│   ├── vercel.json             # Vercel Single-Page Application (SPA) Rewrites
+│   └── vite.config.js          # Vite Configuration
 │
-├── server/                   # Backend Express API & Socket Server
-│   ├── models/               # MongoDB Mongoose Schemas (Candidate, ExamSession, Question, Result)
-│   ├── routes/               # API Route Handlers (authRoutes, adminRoutes, candidateRoutes)
-│   ├── socket/               # Real-Time Socket Server Event Handlers
-│   ├── server.js             # Express & WebSockets Entry Point
-│   └── .env.example          # Backend Environment Variables Template
+├── server/                     # Backend Express API & Socket Server
+│   ├── models/                 # Mongoose Schemas (Admin, Candidate, ExamSession, Question, Result)
+│   ├── routes/                 # Express Route Handlers (adminRoutes, authRoutes, candidateRoutes)
+│   ├── services/               # Core Services (emailService.js - Brevo/Resend/SMTP)
+│   ├── socket/                 # Socket.IO Event Handlers & Connection State
+│   ├── server.js               # Express Server & Socket.IO Entry Point
+│   ├── .env.example            # Environment Template with Brevo/SMTP keys
+│   └── .env                    # Local Server Configuration
 │
-├── .gitignore                # Git Ignore Configuration
-└── README.md                 # Project Documentation
+├── .gitignore                  # Git Ignore Rules
+└── README.md                   # Project Documentation
+```
+
+---
+
+## ⚙️ Environment Variables Reference
+
+### Backend (`server/.env`)
+
+```env
+# Server Port & Allowed Client
+PORT=5000
+CLIENT_URL=http://localhost:5173
+
+# Database Connection (MongoDB Atlas)
+MONGO_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/exam_portal?retryWrites=true&w=majority
+
+# Security Secret
+JWT_SECRET=your_super_secret_jwt_key_here
+
+# -------------------------------------------------------------
+# Email Configuration
+# -------------------------------------------------------------
+# Option A (Recommended for Cloud / Render): Brevo HTTPS API (Port 443)
+# Free 300 emails/day to any recipient, no domain DNS needed.
+BREVO_API_KEY=xkeysib-your_brevo_api_key_here
+
+# Option B: Resend HTTPS API (Port 443)
+# RESEND_API_KEY=re_your_api_key_here
+# RESEND_FROM=onboarding@resend.dev
+
+# Option C: Local Nodemailer SMTP (Gmail, SES)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_gmail_app_password
+SMTP_FROM_NAME="Diverse Solutions Exam Portal"
+SMTP_FROM_EMAIL=your_email@gmail.com
+```
+
+### Frontend (`client/.env`)
+
+```env
+# For Local Development:
+VITE_SERVER_URL=http://localhost:5000
+
+# For Production Deployment on Vercel:
+# VITE_SERVER_URL=https://exam-portal-server-tliz.onrender.com
 ```
 
 ---
@@ -94,80 +178,81 @@ exam_portal/
 
 ### Prerequisites
 - **Node.js** (v18.0.0 or higher)
-- **npm** or **yarn**
-- **MongoDB** instance (Local MongoDB or MongoDB Atlas URI)
+- **npm** (v9+)
+- **MongoDB Atlas** database URI
 
----
-
-### 📥 1. Installation
-
-Clone the repository:
+### 1. Clone the Repository
 ```bash
 git clone https://github.com/debiprasad456/exam_portal.git
 cd exam_portal
 ```
 
----
-
-### ⚙️ 2. Environment Configuration
-
-#### **Backend (`server/`)**
-Navigate to `server/` and create `.env`:
+### 2. Configure Backend
 ```bash
 cd server
+cp .env.example .env
+# Edit .env with your MongoDB URI and Brevo / Gmail credentials
+npm install
+npm run dev
 ```
-Create `.env` file:
-```env
-PORT=5000
-MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/exam_portal?retryWrites=true&w=majority
-JWT_SECRET=your_super_secret_jwt_key
-CLIENT_URL=http://localhost:5173
-```
+*Backend runs on `http://localhost:5000`.*
 
-#### **Frontend (`client/`)**
-Navigate to `client/` and create `.env`:
+### 3. Configure Frontend
 ```bash
 cd ../client
-```
-Create `.env` file:
-```env
-VITE_SERVER_URL=http://localhost:5000
-```
-
----
-
-### 📦 3. Install Dependencies & Run
-
-#### Run Backend Server:
-```bash
-cd server
 npm install
 npm run dev
 ```
-*Server will start on `http://localhost:5000`.*
-
-#### Run Frontend Client:
-```bash
-cd client
-npm install
-npm run dev
-```
-*Client will start on `http://localhost:5173`.*
+*Frontend runs on `http://localhost:5173`.*
 
 ---
 
 ## 🌐 Production Deployment Guide
 
-### Backend (Deployed on Render)
-1. Create a **Web Service** on Render pointing to repository root directory: `server`.
-2. Set Build Command: `npm install` and Start Command: `npm start`.
-3. Configure Environment Variables: `MONGO_URI`, `JWT_SECRET`, `CLIENT_URL`.
+### Backend on [Render](https://render.com)
+1. Create a **Web Service** on Render connected to `debiprasad456/exam_portal`.
+2. Set **Root Directory** to `server`.
+3. Build Command: `npm install`
+4. Start Command: `node server.js`
+5. Under **Environment Variables**, configure:
+   - `MONGO_URI`
+   - `JWT_SECRET`
+   - `CLIENT_URL` = `https://candidate-examination-portal.vercel.app`
+   - `BREVO_API_KEY` = `xkeysib-...` *(Required on Render Free Tier to bypass SMTP port blocking)*
+6. Deploy service.
 
-### Frontend (Deployed on Vercel)
-1. Import repository on Vercel and set Root Directory to `client`.
-2. Framework Preset will auto-select **Vite**.
-3. Configure Environment Variable: `VITE_SERVER_URL = https://exam-portal-server-tliz.onrender.com`.
-4. Vercel automatically utilizes `client/vercel.json` for seamless SPA route navigation.
+### Frontend on [Vercel](https://vercel.com)
+1. Import repository on Vercel and set **Root Directory** to `client`.
+2. Framework Preset will auto-detect **Vite**.
+3. Under **Environment Variables**, add:
+   - `VITE_SERVER_URL` = `https://exam-portal-server-tliz.onrender.com`
+4. Deploy project. `client/vercel.json` ensures full client-side SPA routing without 404s.
+
+---
+
+## 📡 API Endpoints Overview
+
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/auth/setup` | Public | Initial admin account creation |
+| `POST` | `/api/auth/login` | Public | Admin login & JWT generation |
+| `POST` | `/api/auth/forgot-password` | Public | Generates 6-digit OTP and dispatches reset email |
+| `POST` | `/api/auth/reset-password` | Public | Verifies 6-digit OTP and resets admin password |
+| `GET` | `/api/auth/verify` | Admin | Validates existing JWT token |
+| `GET` | `/api/admin/questions` | Admin | Retrieve questions (filterable by subject) |
+| `POST` | `/api/admin/questions` | Admin | Create new question |
+| `PUT` | `/api/admin/questions/:id` | Admin | Update existing question |
+| `DELETE` | `/api/admin/questions/:id` | Admin | Delete question |
+| `GET` | `/api/admin/exam/status` | Admin | Retrieve active exam sessions status |
+| `POST` | `/api/admin/exam/start` | Admin | Start exam session for selected subjects |
+| `POST` | `/api/admin/exam/stop` | Admin | Terminate active exam session |
+| `GET` | `/api/admin/results` | Admin | Retrieve candidate results (filterable by subject/date) |
+| `DELETE` | `/api/admin/results/:id` | Admin | Cascading delete candidate attempt and score |
+| `GET` | `/api/admin/email/status` | Admin | Probe live email service / SMTP status |
+| `POST` | `/api/admin/email/test` | Admin | Send verification test email to target address |
+| `POST` | `/api/candidate/register` | Public | Register candidate & assign session |
+| `GET` | `/api/candidate/questions/:subject` | Public | Fetch randomized exam questions |
+| `POST` | `/api/candidate/submit` | Public | Submit exam answers, compute score, trigger email |
 
 ---
 
