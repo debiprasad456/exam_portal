@@ -66,18 +66,66 @@ const resetTransporter = () => {
 };
 
 /**
- * Check if SMTP is configured
+ * Check if email service is configured
  */
 const isConfigured = () => {
-  return !!(process.env.SMTP_USER && process.env.SMTP_PASS);
+  return !!(process.env.RESEND_API_KEY || (process.env.SMTP_USER && process.env.SMTP_PASS));
 };
 
 /**
- * Verify SMTP connection
+ * Unified email sender:
+ * Uses Resend HTTPS API over port 443 if RESEND_API_KEY is configured (works on Render Free tier),
+ * otherwise falls back to Nodemailer SMTP (Gmail, AWS SES, etc.).
+ */
+const sendMailUnified = async ({ to, subject, html }) => {
+  if (process.env.RESEND_API_KEY) {
+    const fromName = process.env.SMTP_FROM_NAME || 'Diverse Solutions Exam Portal';
+    const fromEmail = process.env.RESEND_FROM || 'onboarding@resend.dev';
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY.trim()}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: `${fromName} <${fromEmail}>`,
+        to: Array.isArray(to) ? to : [to],
+        subject,
+        html,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || `HTTP ${res.status}: Resend email delivery failed`);
+    }
+    return { sent: true, messageId: data.id };
+  }
+
+  const transporter = getTransporter();
+  if (!transporter) throw new Error('Email credentials are not configured on the server.');
+
+  const fromName = process.env.SMTP_FROM_NAME || 'Diverse Solutions Exam Portal';
+  const fromEmail = (process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || '').trim();
+
+  const info = await transporter.sendMail({
+    from: `"${fromName}" <${fromEmail}>`,
+    to,
+    subject,
+    html,
+  });
+  return { sent: true, messageId: info.messageId };
+};
+
+/**
+ * Verify email connection
  */
 const verifySMTP = async () => {
   if (!isConfigured()) {
-    return { success: false, message: 'SMTP credentials (SMTP_USER or SMTP_PASS) are not configured.' };
+    return { success: false, message: 'Email credentials (RESEND_API_KEY or SMTP_USER/SMTP_PASS) are not configured.' };
+  }
+
+  if (process.env.RESEND_API_KEY) {
+    return { success: true, message: 'Resend HTTPS API configured and active.' };
   }
 
   const transporter = getTransporter();
@@ -93,6 +141,7 @@ const verifySMTP = async () => {
     return { success: false, message: err.message };
   }
 };
+
 
 /**
  * Send test email
@@ -180,7 +229,11 @@ const sendTestEmail = async (targetEmail) => {
     `,
   };
 
-  const info = await transporter.sendMail(mailOptions);
+  const info = await sendMailUnified({
+    to: targetEmail,
+    subject: mailOptions.subject,
+    html: mailOptions.html,
+  });
   return info;
 };
 
@@ -341,7 +394,11 @@ const sendExamResultEmail = async ({ candidate, result, subjectTitle }) => {
     `,
   };
 
-  const info = await transporter.sendMail(mailOptions);
+  const info = await sendMailUnified({
+    to: recipientEmail,
+    subject: mailOptions.subject,
+    html: mailOptions.html,
+  });
   console.log(`✉️ Scorecard email sent to ${recipientEmail} (MessageId: ${info.messageId})`);
   return { sent: true, messageId: info.messageId };
 };
@@ -438,7 +495,11 @@ const sendPasswordResetOtpEmail = async ({ toEmail, otp }) => {
     `,
   };
 
-  const info = await transporter.sendMail(mailOptions);
+  const info = await sendMailUnified({
+    to: toEmail,
+    subject: mailOptions.subject,
+    html: mailOptions.html,
+  });
   console.log(`✉️ Password reset OTP email sent to ${toEmail} (MessageId: ${info.messageId})`);
   return { sent: true, messageId: info.messageId };
 };
