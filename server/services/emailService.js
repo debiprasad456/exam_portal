@@ -72,17 +72,53 @@ const resetTransporter = () => {
  * Check if email service is configured
  */
 const isConfigured = () => {
-  return !!(process.env.RESEND_API_KEY || (process.env.SMTP_USER && process.env.SMTP_PASS));
+  return !!(
+    process.env.BREVO_API_KEY ||
+    process.env.RESEND_API_KEY ||
+    (process.env.SMTP_USER && process.env.SMTP_PASS)
+  );
 };
 
 /**
  * Unified email sender:
- * Uses Resend HTTPS API over port 443 if RESEND_API_KEY is configured (works on Render Free tier),
- * otherwise falls back to Nodemailer SMTP (Gmail, AWS SES, etc.).
+ * 1. Uses Brevo HTTPS API over port 443 if BREVO_API_KEY is configured (free 300 emails/day to any recipient)
+ * 2. Uses Resend HTTPS API over port 443 if RESEND_API_KEY is configured (free 3,000 emails/month)
+ * 3. Falls back to Nodemailer SMTP (Gmail, AWS SES, etc.) for local development or unblocked hosts
  */
 const sendMailUnified = async ({ to, subject, html }) => {
+  const fromName = process.env.SMTP_FROM_NAME || 'Diverse Solutions Exam Portal';
+  const defaultSenderEmail = (process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || 'debiprasaddiversesolutions@gmail.com').trim();
+
+  // 1. Brevo (Sendinblue) HTTPS API (Port 443 - free 300 emails/day to any recipient)
+  if (process.env.BREVO_API_KEY) {
+    const toList = Array.isArray(to)
+      ? to.map((e) => ({ email: typeof e === 'string' ? e : e.email }))
+      : [{ email: to }];
+
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': process.env.BREVO_API_KEY.trim(),
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: fromName, email: defaultSenderEmail },
+        to: toList,
+        subject,
+        htmlContent: html,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || `HTTP ${res.status}: Brevo email delivery failed`);
+    }
+    return { sent: true, messageId: data.messageId || 'brevo-sent' };
+  }
+
+  // 2. Resend HTTPS API (Port 443 - free 3,000 emails/month)
   if (process.env.RESEND_API_KEY) {
-    const fromName = process.env.SMTP_FROM_NAME || 'Diverse Solutions Exam Portal';
     const fromEmail = process.env.RESEND_FROM || 'onboarding@resend.dev';
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -104,12 +140,13 @@ const sendMailUnified = async ({ to, subject, html }) => {
     return { sent: true, messageId: data.id };
   }
 
+  // 3. Fallback: Nodemailer SMTP
   const transporter = getTransporter();
-  if (!transporter) throw new Error('Email credentials are not configured on the server.');
+  if (!transporter) {
+    throw new Error('Email credentials are not configured on the server (BREVO_API_KEY, RESEND_API_KEY, or SMTP_USER/SMTP_PASS).');
+  }
 
-  const fromName = process.env.SMTP_FROM_NAME || 'Diverse Solutions Exam Portal';
   const fromEmail = (process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || '').trim();
-
   const info = await transporter.sendMail({
     from: `"${fromName}" <${fromEmail}>`,
     to,
@@ -124,7 +161,11 @@ const sendMailUnified = async ({ to, subject, html }) => {
  */
 const verifySMTP = async () => {
   if (!isConfigured()) {
-    return { success: false, message: 'Email credentials (RESEND_API_KEY or SMTP_USER/SMTP_PASS) are not configured.' };
+    return { success: false, message: 'Email credentials (BREVO_API_KEY, RESEND_API_KEY, or SMTP_USER/SMTP_PASS) are not configured.' };
+  }
+
+  if (process.env.BREVO_API_KEY) {
+    return { success: true, message: 'Brevo HTTPS API (Port 443) configured and active.' };
   }
 
   if (process.env.RESEND_API_KEY) {
@@ -145,20 +186,16 @@ const verifySMTP = async () => {
   }
 };
 
-
 /**
  * Send test email
  */
 const sendTestEmail = async (targetEmail) => {
   if (!isConfigured()) {
-    throw new Error('SMTP is not configured in server environment variables.');
+    throw new Error('Email service is not configured in server environment variables.');
   }
 
-  const transporter = getTransporter();
-  if (!transporter) throw new Error('Transporter initialization failed.');
-
   const fromName = process.env.SMTP_FROM_NAME || 'Diverse Solutions Exam Portal';
-  const fromEmail = (process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || '').trim();
+  const fromEmail = (process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || 'debiprasaddiversesolutions@gmail.com').trim();
 
   const mailOptions = {
     from: `"${fromName}" <${fromEmail}>`,
@@ -245,13 +282,8 @@ const sendTestEmail = async (targetEmail) => {
  */
 const sendExamResultEmail = async ({ candidate, result, subjectTitle }) => {
   if (!isConfigured()) {
-    console.warn('⚠️ SMTP not configured. Skipping exam result email.');
-    return { sent: false, reason: 'SMTP not configured' };
-  }
-
-  const transporter = getTransporter();
-  if (!transporter) {
-    return { sent: false, reason: 'Transporter unavailable' };
+    console.warn('⚠️ Email service not configured. Skipping exam result email.');
+    return { sent: false, reason: 'Email service not configured' };
   }
 
   const recipientEmail = candidate.email;
@@ -411,14 +443,11 @@ const sendExamResultEmail = async ({ candidate, result, subjectTitle }) => {
  */
 const sendPasswordResetOtpEmail = async ({ toEmail, otp }) => {
   if (!isConfigured()) {
-    throw new Error('SMTP is not configured on the server.');
+    throw new Error('Email service is not configured on the server.');
   }
 
-  const transporter = getTransporter();
-  if (!transporter) throw new Error('Transporter initialization failed.');
-
   const fromName = process.env.SMTP_FROM_NAME || 'Diverse Solutions Exam Portal';
-  const fromEmail = (process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || '').trim();
+  const fromEmail = (process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || 'debiprasaddiversesolutions@gmail.com').trim();
 
   const mailOptions = {
     from: `"${fromName}" <${fromEmail}>`,
