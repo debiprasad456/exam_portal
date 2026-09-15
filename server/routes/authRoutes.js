@@ -121,16 +121,35 @@ router.post('/forgot-password', async (req, res) => {
     admin.resetPasswordExpires = expires;
     await admin.save();
 
-    // Send email via configured SMTP
-    await emailService.sendPasswordResetOtpEmail({
-      toEmail: admin.email,
-      otp,
-    });
+    // Print OTP prominently to server logs (helpful for rescue if SMTP ports are blocked on Render/Vercel)
+    console.log('\n==================================================');
+    console.log('[PASSWORD RESET REQUEST]');
+    console.log('Admin Email:', admin.email);
+    console.log('6-Digit Verification Code (OTP):', otp);
+    console.log('Valid until:', expires.toISOString());
+    console.log('==================================================\n');
 
-    res.json({
-      message: `A 6-digit verification code has been sent to ${admin.email}.`,
-      email: admin.email,
-    });
+    try {
+      // Send email via configured SMTP or Resend
+      await emailService.sendPasswordResetOtpEmail({
+        toEmail: admin.email,
+        otp,
+      });
+
+      return res.json({
+        message: `A 6-digit verification code has been sent to ${admin.email}.`,
+        email: admin.email,
+      });
+    } catch (emailError) {
+      console.warn('[Forgot Password - Email Delivery Warning]:', emailError.message);
+      // In cloud hosts like Render free tier where SMTP outbound ports 25, 465, 587 are blocked,
+      // the OTP was safely saved and logged to server logs so the admin can still proceed
+      return res.json({
+        message: `Verification code generated for ${admin.email}. If email delivery is delayed or restricted by your host, check server logs. Code is valid for 15 minutes.`,
+        email: admin.email,
+        emailDeliveryWarning: emailError.message,
+      });
+    }
   } catch (err) {
     console.error('Forgot password error:', err);
     res.status(500).json({ message: err.message || 'Failed to process forgot password request.' });

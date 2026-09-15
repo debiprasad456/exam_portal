@@ -42,7 +42,7 @@ const corsOriginValidator = (origin, callback) => {
   // Allow requests with no origin (like mobile apps, curl, Postman, server-to-server, health check)
   if (!origin) return callback(null, true);
 
-  if (allowedOriginSet.has(origin) || (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost:'))) {
+  if (allowedOriginSet.has(origin) || (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost:')) || origin.endsWith('.vercel.app') || /\.vercel\.app$/.test(origin)) {
     return callback(null, true);
   }
 

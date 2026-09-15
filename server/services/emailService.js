@@ -45,9 +45,12 @@ const getTransporter = () => {
       user,
       pass,
     },
-    pool: true,
-    maxConnections: 5,
-    maxMessages: 100,
+    tls: {
+      rejectUnauthorized: false,
+    },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
   });
 
   return cachedTransporter;
