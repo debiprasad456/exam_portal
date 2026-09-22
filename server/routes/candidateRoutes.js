@@ -481,30 +481,7 @@ router.post('/submit', async (req, res) => {
     // Mark candidate as submitted
     await Candidate.findByIdAndUpdate(candidateId, { hasSubmitted: true });
 
-    // Send automated scorecard email asynchronously (non-blocking)
-    emailService
-      .sendExamResultEmail({
-        candidate,
-        result,
-        subjectTitle: emailService.getSubjectName(subject),
-      })
-      .then(async (sendRes) => {
-        if (sendRes?.sent) {
-          await Result.findByIdAndUpdate(result._id, {
-            emailSent: true,
-            emailSentAt: new Date(),
-          });
-        }
-      })
-      .catch(async (err) => {
-        console.error('❌ Failed to send automated exam result email:', err.message);
-        await Result.findByIdAndUpdate(result._id, {
-          emailSent: false,
-          emailError: err.message,
-        }).catch(() => {});
-      });
-
-    // Emit live result to admin room
+    // Emit live result to admin room (only admin views candidate marks)
     try {
       const io = getIO();
       const populated = await Result.findById(result._id).populate(
@@ -516,9 +493,6 @@ router.post('/submit', async (req, res) => {
 
     res.json({
       message: 'Exam submitted successfully!',
-      score,
-      totalQuestions,
-      percentage,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

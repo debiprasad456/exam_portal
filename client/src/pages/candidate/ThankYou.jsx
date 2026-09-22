@@ -70,24 +70,14 @@ export default function ThankYou() {
             </div>
             <div>
               <p className="text-white font-medium text-sm">Results with Administrator</p>
-              <p className="text-slate-500 text-xs">Your score will be reviewed by the exam administrator</p>
-            </div>
-          </div>
-          <div className="w-full h-px bg-white/5" />
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center text-cyan-400">
-              ✉️
-            </div>
-            <div>
-              <p className="text-white font-medium text-sm">Scorecard Dispatched</p>
-              <p className="text-slate-500 text-xs">An official copy of your result has been sent to your registered email</p>
+              <p className="text-slate-500 text-xs">Your answers have been submitted securely to the examination administrator</p>
             </div>
           </div>
         </div>
 
         <div className="text-slate-500 text-sm space-y-2">
           <p>🔒 Your exam cannot be retaken once submitted.</p>
-          <p>📧 Check your inbox/spam folder for your official scorecard summary.</p>
+          <p>⏳ Further updates will be communicated directly by the administrator.</p>
         </div>
 
 

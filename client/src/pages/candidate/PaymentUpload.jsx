@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { uploadPayment, getPaymentStatus } from '../../api';
 import useCandidateStore from '../../stores/candidateStore';
+import { compressImage, formatBytes } from '../../utils/imageCompressor';
 
 export default function PaymentUpload() {
   const { candidateId, name, subject, paymentStatus, setPaymentStatus } = useCandidateStore();
@@ -9,6 +10,8 @@ export default function PaymentUpload() {
   const fileInputRef = useRef(null);
 
   const [preview, setPreview] = useState(null);
+  const [compressionInfo, setCompressionInfo] = useState(null);
+  const [compressing, setCompressing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -38,7 +41,7 @@ export default function PaymentUpload() {
       .catch(() => {});
   }, []);
 
-  const handleFileSelect = (e) => {
+  const handleFileSelect = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -48,20 +51,28 @@ export default function PaymentUpload() {
       return;
     }
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setError('File size must be less than 5MB.');
+    // Validate file size (max 10MB input before compression)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Original file size must be less than 10MB.');
       return;
     }
 
     setError('');
+    setCompressing(true);
 
-    // Convert to base64
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setPreview(event.target.result);
-    };
-    reader.readAsDataURL(file);
+    try {
+      // Compress image client-side to max 1200px and 78% quality
+      const result = await compressImage(file, { maxWidth: 1200, maxHeight: 1200, quality: 0.78 });
+      setPreview(result.dataUrl);
+      setCompressionInfo({
+        original: formatBytes(result.originalSize),
+        compressed: formatBytes(result.compressedSize),
+      });
+    } catch (err) {
+      setError('Failed to process image. Please choose another one.');
+    } finally {
+      setCompressing(false);
+    }
   };
 
   const handleUpload = async () => {
@@ -162,14 +173,27 @@ export default function PaymentUpload() {
                 className="hidden"
               />
 
-              {preview ? (
+              {compressing ? (
+                <div className="py-8 text-center">
+                  <div className="w-10 h-10 border-3 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                  <p className="text-primary-300 text-sm font-medium">Optimizing screenshot...</p>
+                  <p className="text-slate-500 text-xs mt-1">Compressing for instant upload</p>
+                </div>
+              ) : preview ? (
                 <div>
                   <img
                     src={preview}
                     alt="Payment screenshot preview"
                     className="max-h-48 mx-auto rounded-xl border border-white/10 shadow-lg mb-3"
                   />
-                  <p className="text-emerald-400 text-sm font-medium">Screenshot selected ✓</p>
+                  <div className="flex items-center justify-center gap-2 flex-wrap">
+                    <p className="text-emerald-400 text-sm font-medium">Screenshot selected ✓</p>
+                    {compressionInfo && (
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                        {compressionInfo.original} → {compressionInfo.compressed}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-slate-500 text-xs mt-1">Click to change</p>
                 </div>
               ) : (
@@ -181,7 +205,7 @@ export default function PaymentUpload() {
                   </div>
                   <p className="text-white font-medium text-sm">Upload Payment Screenshot</p>
                   <p className="text-slate-500 text-xs mt-1">Click to browse or drag & drop</p>
-                  <p className="text-slate-600 text-xs mt-2">JPEG, PNG up to 5MB</p>
+                  <p className="text-slate-600 text-xs mt-2">JPEG, PNG up to 10MB (auto-compressed)</p>
                 </div>
               )}
             </div>
@@ -195,7 +219,7 @@ export default function PaymentUpload() {
             {/* Upload Button */}
             <button
               onClick={handleUpload}
-              disabled={!preview || uploading}
+              disabled={!preview || uploading || compressing}
               className="btn-primary w-full py-4 text-base mt-6"
             >
               {uploading ? (
@@ -203,6 +227,8 @@ export default function PaymentUpload() {
                   <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   Uploading...
                 </span>
+              ) : compressing ? (
+                'Optimizing image...'
               ) : '📤 Upload & Submit for Review'}
             </button>
 
