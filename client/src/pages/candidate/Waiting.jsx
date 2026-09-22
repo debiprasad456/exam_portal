@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSocket } from '../../socket';
-import { getExamStatus, cleanupCandidate } from '../../api';
+import { getExamStatus, cleanupCandidate, getPaymentStatus } from '../../api';
 import useCandidateStore from '../../stores/candidateStore';
 
 const SUBJECT_LABELS = {
@@ -14,19 +14,35 @@ const SUBJECT_LABELS = {
 const SUBJECT_ICONS = { marketing: '📈', hr: '🤝', digital_marketing: '💻', general_reasoning: '🧠' };
 
 export default function Waiting() {
-  const { candidateId, name, subject, token, clear } = useCandidateStore();
+  const { candidateId, name, subject, token, paymentStatus, setPaymentStatus, clear } = useCandidateStore();
   const [status, setStatus] = useState('waiting');
   const [dots, setDots] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!candidateId || !subject) { navigate('/'); return; }
 
+    // Check payment status first
+    getPaymentStatus(candidateId)
+      .then(({ data }) => {
+        setPaymentStatus(data.paymentStatus);
+        if (data.paymentStatus === 'rejected') {
+          setRejectionReason(data.rejectionReason || '');
+        }
+        if (!data.hasUploaded) {
+          // No payment uploaded yet, redirect to payment
+          navigate('/payment');
+          return;
+        }
+      })
+      .catch(() => {});
+
     // Check current exam status on load
     getExamStatus()
       .then(({ data }) => {
         const subjectStatus = data[subject];
-        if (subjectStatus?.status === 'active') {
+        if (subjectStatus?.status === 'active' && paymentStatus === 'approved') {
           navigate('/exam');
         } else if (subjectStatus?.status === 'ended') {
           setStatus('ended');
@@ -39,7 +55,7 @@ export default function Waiting() {
     socket.emit('candidate:join', { token, candidateId, subject });
 
     socket.on('exam:started', ({ subject: startedSubject }) => {
-      if (startedSubject === subject) {
+      if (startedSubject === subject && useCandidateStore.getState().paymentStatus === 'approved') {
         setStatus('starting');
         setTimeout(() => navigate('/exam'), 1500);
       }
@@ -51,11 +67,43 @@ export default function Waiting() {
       }
     });
 
+    // Real-time payment status updates
+    socket.on('payment:approved', ({ candidateId: cId }) => {
+      if (cId === candidateId) {
+        setPaymentStatus('approved');
+        setRejectionReason('');
+      }
+    });
+
+    socket.on('payment:rejected', ({ candidateId: cId, reason }) => {
+      if (cId === candidateId) {
+        setPaymentStatus('rejected');
+        setRejectionReason(reason || '');
+      }
+    });
+
     return () => {
       socket.off('exam:started');
       socket.off('exam:ended');
+      socket.off('payment:approved');
+      socket.off('payment:rejected');
     };
   }, []);
+
+  // Re-check exam status when payment gets approved
+  useEffect(() => {
+    if (paymentStatus === 'approved') {
+      getExamStatus()
+        .then(({ data }) => {
+          const subjectStatus = data[subject];
+          if (subjectStatus?.status === 'active') {
+            setStatus('starting');
+            setTimeout(() => navigate('/exam'), 1500);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [paymentStatus]);
 
   // Animated dots
   useEffect(() => {
@@ -71,6 +119,51 @@ export default function Waiting() {
     <div className="min-h-screen page-bg flex items-center justify-center p-4">
       <div className="w-full max-w-lg text-center animate-fade-in">
 
+        {/* Payment Status Banner */}
+        {paymentStatus !== 'approved' && (
+          <div className={`mb-6 p-4 rounded-2xl border ${
+            paymentStatus === 'pending'
+              ? 'bg-amber-500/5 border-amber-500/20'
+              : 'bg-red-500/5 border-red-500/20'
+          }`}>
+            {paymentStatus === 'pending' && (
+              <>
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-amber-400 font-semibold text-sm">Payment Under Review</span>
+                </div>
+                <p className="text-slate-400 text-xs">
+                  Your payment screenshot is being reviewed by the admin. You'll be notified once approved.
+                </p>
+              </>
+            )}
+            {paymentStatus === 'rejected' && (
+              <>
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <span className="text-red-400 font-semibold text-sm">❌ Payment Rejected</span>
+                </div>
+                {rejectionReason && (
+                  <p className="text-red-300 text-xs mb-3 bg-red-500/10 rounded-lg px-3 py-2">
+                    Reason: {rejectionReason}
+                  </p>
+                )}
+                <button
+                  onClick={() => navigate('/payment')}
+                  className="btn-primary text-xs px-4 py-2"
+                >
+                  📤 Re-upload Payment Screenshot
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
+        {paymentStatus === 'approved' && status !== 'starting' && status !== 'ended' && (
+          <div className="mb-6 p-3 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 flex items-center justify-center gap-2">
+            <span className="text-emerald-400 font-semibold text-sm">✅ Payment Verified</span>
+          </div>
+        )}
+
         {/* Status-based display */}
         {status === 'waiting' && (
           <>
@@ -83,8 +176,18 @@ export default function Waiting() {
               </div>
             </div>
 
-            <h1 className="text-2xl font-bold text-white mb-2">Waiting for Exam to Begin{dots}</h1>
-            <p className="text-slate-400 mb-8">The admin will start your exam shortly. Please stay on this page.</p>
+            <h1 className="text-2xl font-bold text-white mb-2">
+              {paymentStatus === 'approved'
+                ? `Waiting for Exam to Begin${dots}`
+                : `Waiting for Payment Approval${dots}`
+              }
+            </h1>
+            <p className="text-slate-400 mb-8">
+              {paymentStatus === 'approved'
+                ? 'The admin will start your exam shortly. Please stay on this page.'
+                : 'Your payment is being verified. Please stay on this page.'
+              }
+            </p>
 
             <div className="glass-card p-6 text-left space-y-3 mb-8">
               <div className="flex items-center justify-between">
@@ -95,6 +198,28 @@ export default function Waiting() {
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 text-sm">Subject</span>
                 <span className="text-primary-300 font-medium">{SUBJECT_LABELS[subject]}</span>
+              </div>
+              <div className="w-full h-px bg-white/5" />
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 text-sm">Payment</span>
+                <div className="flex items-center gap-2">
+                  {paymentStatus === 'approved' ? (
+                    <>
+                      <span className="w-2 h-2 bg-emerald-400 rounded-full" />
+                      <span className="text-emerald-400 text-sm font-medium">Verified</span>
+                    </>
+                  ) : paymentStatus === 'rejected' ? (
+                    <>
+                      <span className="w-2 h-2 bg-red-400 rounded-full" />
+                      <span className="text-red-400 text-sm font-medium">Rejected</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
+                      <span className="text-amber-400 text-sm font-medium">Under Review</span>
+                    </>
+                  )}
+                </div>
               </div>
               <div className="w-full h-px bg-white/5" />
               <div className="flex items-center justify-between">

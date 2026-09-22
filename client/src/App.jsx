@@ -8,9 +8,11 @@ import Dashboard from './pages/admin/Dashboard';
 import Questions from './pages/admin/Questions';
 import ExamControl from './pages/admin/ExamControl';
 import Results from './pages/admin/Results';
+import Payments from './pages/admin/Payments';
 
 // Candidate Pages
 import Register from './pages/candidate/Register';
+import PaymentUpload from './pages/candidate/PaymentUpload';
 import Waiting from './pages/candidate/Waiting';
 import ExamRoom from './pages/candidate/ExamRoom';
 import ThankYou from './pages/candidate/ThankYou';
@@ -21,6 +23,7 @@ function App() {
       <Routes>
         {/* ── Candidate Routes ── */}
         <Route path="/" element={<Register />} />
+        <Route path="/payment" element={<PaymentUpload />} />
         <Route path="/waiting" element={<Waiting />} />
         <Route path="/exam" element={<ExamRoom />} />
         <Route path="/thankyou" element={<ThankYou />} />
@@ -40,6 +43,7 @@ function App() {
           <Route path="questions" element={<Questions />} />
           <Route path="exam" element={<ExamControl />} />
           <Route path="results" element={<Results />} />
+          <Route path="payments" element={<Payments />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

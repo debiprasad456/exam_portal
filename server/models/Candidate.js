@@ -35,6 +35,11 @@ const candidateSchema = new mongoose.Schema(
     startedAt: {
       type: Date,
     },
+    paymentStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending',
+    },
   },
   { timestamps: true }
 );

@@ -6,6 +6,7 @@ const useCandidateStore = create((set) => ({
   subject: localStorage.getItem('candidateSubject') || null,
   token: localStorage.getItem('candidateToken') || null,
   hasSubmitted: localStorage.getItem('hasSubmitted') === 'true',
+  paymentStatus: localStorage.getItem('paymentStatus') || 'pending',
 
   register: (candidateId, name, subject, token = null) => {
     localStorage.setItem('candidateId', candidateId);
@@ -13,7 +14,13 @@ const useCandidateStore = create((set) => ({
     localStorage.setItem('candidateSubject', subject);
     if (token) localStorage.setItem('candidateToken', token);
     localStorage.removeItem('hasSubmitted');
-    set({ candidateId, name, subject, token, hasSubmitted: false });
+    localStorage.setItem('paymentStatus', 'pending');
+    set({ candidateId, name, subject, token, hasSubmitted: false, paymentStatus: 'pending' });
+  },
+
+  setPaymentStatus: (status) => {
+    localStorage.setItem('paymentStatus', status);
+    set({ paymentStatus: status });
   },
 
   setSubmitted: () => {
@@ -27,7 +34,8 @@ const useCandidateStore = create((set) => ({
     localStorage.removeItem('candidateSubject');
     localStorage.removeItem('candidateToken');
     localStorage.removeItem('hasSubmitted');
-    set({ candidateId: null, name: null, subject: null, token: null, hasSubmitted: false });
+    localStorage.removeItem('paymentStatus');
+    set({ candidateId: null, name: null, subject: null, token: null, hasSubmitted: false, paymentStatus: 'pending' });
   },
 }));
 
