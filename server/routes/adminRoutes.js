@@ -6,7 +6,6 @@ const Question = require('../models/Question');
 const ExamSession = require('../models/ExamSession');
 const Result = require('../models/Result');
 const Candidate = require('../models/Candidate');
-const Payment = require('../models/Payment');
 const { getIO } = require('../socket/ioInstance');
 const { startExamTimer, stopExamTimer } = require('../socket/examSocket');
 const emailService = require('../services/emailService');
@@ -399,113 +398,6 @@ router.post('/email/send-results-bulk', async (req, res) => {
       failed,
       errors,
     });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-/* ─────────────────────────── PAYMENT MANAGEMENT ─────────────────────────── */
-
-/**
- * GET /api/admin/payments
- * All payments with candidate details.
- * Optional query: ?status=pending
- */
-router.get('/payments', async (req, res) => {
-  try {
-    const { status } = req.query;
-    const filter = status ? { status } : {};
-    const payments = await Payment.find(filter)
-      .populate('candidate', 'name email phone address subject createdAt')
-      .sort({ createdAt: -1 })
-      .lean();
-    res.json(payments);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-/**
- * GET /api/admin/payments/stats
- * Payment statistics (pending, approved, rejected counts).
- */
-router.get('/payments/stats', async (req, res) => {
-  try {
-    const [pending, approved, rejected] = await Promise.all([
-      Payment.countDocuments({ status: 'pending' }),
-      Payment.countDocuments({ status: 'approved' }),
-      Payment.countDocuments({ status: 'rejected' }),
-    ]);
-    res.json({ pending, approved, rejected, total: pending + approved + rejected });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-/**
- * POST /api/admin/payments/:id/approve
- * Approve a payment.
- */
-router.post('/payments/:id/approve', async (req, res) => {
-  try {
-    const payment = await Payment.findById(req.params.id);
-    if (!payment) {
-      return res.status(404).json({ message: 'Payment not found.' });
-    }
-
-    payment.status = 'approved';
-    payment.rejectionReason = '';
-    payment.reviewedAt = new Date();
-    await payment.save();
-
-    await Candidate.findByIdAndUpdate(payment.candidate, { paymentStatus: 'approved' });
-
-    // Notify the specific candidate in real-time
-    try {
-      const io = getIO();
-      io.to(`candidate:${payment.candidate.toString()}`).emit('payment:approved', {
-        candidateId: payment.candidate.toString(),
-        message: 'Your payment has been approved! You can now take the exam.',
-      });
-    } catch (_) {}
-
-    res.json({ message: 'Payment approved successfully.' });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-/**
- * POST /api/admin/payments/:id/reject
- * Reject a payment with a reason.
- * Body: { reason }
- */
-router.post('/payments/:id/reject', async (req, res) => {
-  try {
-    const { reason } = req.body;
-    const payment = await Payment.findById(req.params.id);
-    if (!payment) {
-      return res.status(404).json({ message: 'Payment not found.' });
-    }
-
-    payment.status = 'rejected';
-    payment.rejectionReason = reason || 'Payment could not be verified.';
-    payment.reviewedAt = new Date();
-    await payment.save();
-
-    await Candidate.findByIdAndUpdate(payment.candidate, { paymentStatus: 'rejected' });
-
-    // Notify the specific candidate in real-time
-    try {
-      const io = getIO();
-      io.to(`candidate:${payment.candidate.toString()}`).emit('payment:rejected', {
-        candidateId: payment.candidate.toString(),
-        reason: payment.rejectionReason,
-        message: 'Your payment was rejected. Please re-upload a valid screenshot.',
-      });
-    } catch (_) {}
-
-    res.json({ message: 'Payment rejected.' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

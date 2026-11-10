@@ -5,7 +5,6 @@ const Candidate = require('../models/Candidate');
 const Question = require('../models/Question');
 const Result = require('../models/Result');
 const ExamSession = require('../models/ExamSession');
-const Payment = require('../models/Payment');
 const { getIO } = require('../socket/ioInstance');
 const emailService = require('../services/emailService');
 
@@ -202,16 +201,6 @@ router.get('/candidate-session/:candidateId', async (req, res) => {
       return res.status(404).json({ message: 'Candidate not found.' });
     }
 
-    // Block exam access if payment not approved
-    if (candidate.paymentStatus !== 'approved') {
-      const payment = await Payment.findOne({ candidate: candidate._id }).lean();
-      return res.json({
-        status: 'payment_' + (candidate.paymentStatus || 'pending'),
-        paymentStatus: candidate.paymentStatus || 'pending',
-        rejectionReason: payment?.rejectionReason || '',
-      });
-    }
-
     const session = await ExamSession.findOne({
       subject: candidate.subject,
       status: { $in: ['waiting', 'active'] },
@@ -242,133 +231,6 @@ router.get('/candidate-session/:candidateId', async (req, res) => {
       timeLeft,
       startedAt,
     });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-/**
- * POST /api/candidate/upload-payment
- * Upload a payment screenshot.
- * Body: { candidateId, screenshot } (screenshot is base64 data URL)
- */
-router.post('/upload-payment', async (req, res) => {
-  try {
-    const { candidateId, screenshot } = req.body;
-    if (!candidateId || !screenshot) {
-      return res.status(400).json({ message: 'candidateId and screenshot are required.' });
-    }
-
-    const candidate = await Candidate.findById(candidateId).lean();
-    if (!candidate) {
-      return res.status(404).json({ message: 'Candidate not found.' });
-    }
-
-    // Check if payment already exists
-    const existingPayment = await Payment.findOne({ candidate: candidateId }).lean();
-    if (existingPayment && existingPayment.status === 'approved') {
-      return res.status(400).json({ message: 'Payment already approved.' });
-    }
-
-    if (existingPayment) {
-      // Update existing payment (re-upload case)
-      await Payment.findByIdAndUpdate(existingPayment._id, {
-        screenshot,
-        status: 'pending',
-        rejectionReason: '',
-        reviewedAt: null,
-      });
-    } else {
-      // Create new payment
-      await Payment.create({
-        candidate: candidateId,
-        subject: candidate.subject,
-        amount: 500,
-        screenshot,
-        status: 'pending',
-      });
-    }
-
-    await Candidate.findByIdAndUpdate(candidateId, { paymentStatus: 'pending' });
-
-    // Notify admin of new payment
-    try {
-      const io = getIO();
-      const payment = await Payment.findOne({ candidate: candidateId }).populate('candidate', 'name email phone subject');
-      io.to('admin').emit('payment:new', { payment });
-    } catch (_) {}
-
-    res.json({ message: 'Payment screenshot uploaded successfully. Awaiting admin approval.' });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-/**
- * GET /api/candidate/payment-status/:candidateId
- * Get the current payment status for a candidate.
- */
-router.get('/payment-status/:candidateId', async (req, res) => {
-  try {
-    const candidate = await Candidate.findById(req.params.candidateId).lean();
-    if (!candidate) {
-      return res.status(404).json({ message: 'Candidate not found.' });
-    }
-
-    const payment = await Payment.findOne({ candidate: candidate._id }).lean();
-    res.json({
-      paymentStatus: candidate.paymentStatus || 'pending',
-      hasUploaded: !!payment,
-      rejectionReason: payment?.rejectionReason || '',
-      reviewedAt: payment?.reviewedAt || null,
-    });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-/**
- * POST /api/candidate/reupload-payment
- * Re-upload a payment screenshot after rejection.
- * Body: { candidateId, screenshot }
- */
-router.post('/reupload-payment', async (req, res) => {
-  try {
-    const { candidateId, screenshot } = req.body;
-    if (!candidateId || !screenshot) {
-      return res.status(400).json({ message: 'candidateId and screenshot are required.' });
-    }
-
-    const candidate = await Candidate.findById(candidateId).lean();
-    if (!candidate) {
-      return res.status(404).json({ message: 'Candidate not found.' });
-    }
-
-    const payment = await Payment.findOne({ candidate: candidateId });
-    if (!payment) {
-      return res.status(404).json({ message: 'No payment record found. Please upload first.' });
-    }
-
-    if (payment.status === 'approved') {
-      return res.status(400).json({ message: 'Payment already approved.' });
-    }
-
-    payment.screenshot = screenshot;
-    payment.status = 'pending';
-    payment.rejectionReason = '';
-    payment.reviewedAt = null;
-    await payment.save();
-
-    await Candidate.findByIdAndUpdate(candidateId, { paymentStatus: 'pending' });
-
-    // Notify admin
-    try {
-      const io = getIO();
-      const updated = await Payment.findById(payment._id).populate('candidate', 'name email phone subject');
-      io.to('admin').emit('payment:new', { payment: updated });
-    } catch (_) {}
-
-    res.json({ message: 'Payment screenshot re-uploaded successfully. Awaiting admin approval.' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -415,11 +277,6 @@ router.post('/submit', async (req, res) => {
     const existingResult = await Result.findOne({ candidate: candidateId }).lean();
     if (existingResult) {
       return res.status(400).json({ message: 'You have already submitted your exam.' });
-    }
-
-    // Ensure payment is approved
-    if (candidate.paymentStatus !== 'approved') {
-      return res.status(403).json({ message: 'Exam submission requires approved payment.' });
     }
 
     // Find the most recent active or just-ended session for the subject

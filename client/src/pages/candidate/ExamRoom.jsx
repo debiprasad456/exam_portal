@@ -32,11 +32,6 @@ export default function ExamRoom() {
     // Fetch individual candidate timer session
     getCandidateSession(candidateId)
       .then(({ data }) => {
-        // Block if payment not approved
-        if (data.status?.startsWith('payment_')) {
-          navigate('/waiting');
-          return;
-        }
         if (data.status === 'ended') {
           navigate('/thankyou');
           return;

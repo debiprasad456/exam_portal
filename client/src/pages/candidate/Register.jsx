@@ -19,7 +19,7 @@ export default function Register() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (candidateId) navigate('/payment');
+    if (candidateId) navigate('/waiting');
   }, []);
 
   const handleSubmit = async (e) => {
@@ -30,7 +30,7 @@ export default function Register() {
     try {
       const { data } = await registerCandidate(form);
       register(data.candidateId, data.name, data.subject, data.token);
-      navigate('/payment');
+      navigate('/waiting');
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
     } finally {

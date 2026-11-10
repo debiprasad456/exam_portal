@@ -62,16 +62,4 @@ export const getCandidateSession = (candidateId) => api.get(`/candidate/candidat
 export const cleanupCandidate = (candidateId) => api.delete(`/candidate/cleanup/${candidateId}`);
 export const submitExam = (data) => api.post('/candidate/submit', data);
 
-// ─── Candidate: Payment ───
-export const uploadPayment = (data) => api.post('/candidate/upload-payment', data);
-export const getPaymentStatus = (candidateId) => api.get(`/candidate/payment-status/${candidateId}`);
-export const reuploadPayment = (data) => api.post('/candidate/reupload-payment', data);
-
-// ─── Admin: Payments ───
-export const getPayments = (status = '') =>
-  api.get('/admin/payments', { params: status ? { status } : {} });
-export const approvePayment = (id) => api.post(`/admin/payments/${id}/approve`);
-export const rejectPayment = (id, reason) => api.post(`/admin/payments/${id}/reject`, { reason });
-export const getPaymentStats = () => api.get('/admin/payments/stats');
-
 export default api;
