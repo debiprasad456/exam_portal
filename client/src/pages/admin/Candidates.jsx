@@ -211,10 +211,13 @@ export default function Candidates() {
     const rows = filteredCandidates.map((c) => {
       const { date, time } = formatDateTime(c.createdAt);
       const status = c.hasSubmitted ? 'Submitted' : c.startedAt ? 'In Exam' : 'Waiting';
+      const phoneClean = String(c.phone || '').replace(/"/g, '').trim();
+      const phoneField = phoneClean ? `"=""${phoneClean}"""` : '""';
+
       return [
         `"${c.name || ''}"`,
         `"${c.email || ''}"`,
-        `"${c.phone || ''}"`,
+        phoneField,
         `"${c.subject || ''}"`,
         `"${(c.address || '').replace(/"/g, '""')}"`,
         `"${status}"`,
@@ -222,7 +225,7 @@ export default function Candidates() {
         `"${time}"`,
       ].join(',');
     });
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows].join('\n');
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);

@@ -162,6 +162,56 @@ export default function Results() {
     setSortBy('newest');
   };
 
+  const exportCSV = () => {
+    if (!displayedResults.length) return;
+    const headers = [
+      'Candidate Name',
+      'Subject',
+      'Email',
+      'Mobile No',
+      'Residential Address',
+      'Submission Date',
+      'Submission Time',
+      'Score',
+      'Total Questions',
+      'Percentage',
+      'Status',
+    ];
+
+    const rows = displayedResults.map((r) => {
+      const submissionTime = r.createdAt || r.candidate?.createdAt;
+      const { date, time } = formatDateTime(submissionTime);
+      const isPassed = (r.score || 0) >= 22;
+      const subj = SUBJECTS.find((s) => s.value === r.subject)?.label || r.subject || '';
+      const phoneClean = String(r.candidate?.phone || '').replace(/"/g, '').trim();
+      const phoneField = phoneClean ? `"=""${phoneClean}"""` : '""';
+
+      return [
+        `"${(r.candidate?.name || '').replace(/"/g, '""')}"`,
+        `"${subj.replace(/"/g, '""')}"`,
+        `"${(r.candidate?.email || '').replace(/"/g, '""')}"`,
+        phoneField,
+        `"${(r.candidate?.address || '').replace(/"/g, '""')}"`,
+        `"${date}"`,
+        `"${time}"`,
+        r.score ?? 0,
+        r.totalQuestions ?? 0,
+        `"${r.percentage ?? 0}%"`,
+        `"${isPassed ? 'Passed' : 'Failed'}"`,
+      ].join(',');
+    });
+
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    const dateStr = new Date().toISOString().slice(0, 10);
+    link.setAttribute('download', `exam_results_${filter || 'all'}_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="p-4 sm:p-6 md:p-8 page-bg min-h-full">
       <div className="max-w-6xl mx-auto">
@@ -183,6 +233,14 @@ export default function Results() {
                 ✕ Reset Filters
               </button>
             )}
+            <button
+              onClick={exportCSV}
+              disabled={displayedResults.length === 0}
+              className="btn-ghost text-xs sm:text-sm px-3 sm:px-4 py-2 inline-flex items-center gap-1.5"
+              title="Download results as CSV"
+            >
+              📥 Export CSV
+            </button>
             <button onClick={load} className="btn-ghost text-xs sm:text-sm px-3 sm:px-4 py-2">
               ↻ Refresh
             </button>
