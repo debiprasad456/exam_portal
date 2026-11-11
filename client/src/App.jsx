@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AdminLogin from './pages/admin/Login';
 import AdminLayout from './pages/admin/Layout';
 import Dashboard from './pages/admin/Dashboard';
+import Candidates from './pages/admin/Candidates';
 import Questions from './pages/admin/Questions';
 import ExamControl from './pages/admin/ExamControl';
 import Results from './pages/admin/Results';
@@ -37,6 +38,7 @@ function App() {
         >
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
+          <Route path="candidates" element={<Candidates />} />
           <Route path="questions" element={<Questions />} />
           <Route path="exam" element={<ExamControl />} />
           <Route path="results" element={<Results />} />

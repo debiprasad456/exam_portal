@@ -252,6 +252,42 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+/* ─────────────────────────── CANDIDATES ─────────────────────────── */
+
+/**
+ * GET /api/admin/candidates
+ * Retrieve all registered candidates directly from Candidate collection.
+ * Optional query: ?subject=marketing
+ */
+router.get('/candidates', async (req, res) => {
+  try {
+    const { subject } = req.query;
+    const filter = subject ? { subject } : {};
+    const candidates = await Candidate.find(filter)
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json(candidates);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/**
+ * DELETE /api/admin/candidates/:id
+ * Delete a candidate and any corresponding exam results.
+ */
+router.delete('/candidates/:id', async (req, res) => {
+  try {
+    const candidateId = req.params.id;
+    await Result.deleteMany({ candidate: candidateId });
+    const candidate = await Candidate.findByIdAndDelete(candidateId);
+    if (!candidate) return res.status(404).json({ message: 'Candidate not found.' });
+    res.json({ message: 'Candidate deleted successfully.' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 /* ─────────────────────────── EMAIL & NOTIFICATIONS ─────────────────────────── */
 
 /**

@@ -101,6 +101,12 @@ router.post('/register', async (req, res) => {
     });
     await candidate.save();
 
+    // Broadcast new candidate registration to admin in real time
+    try {
+      const io = getIO();
+      io.to('admin').emit('candidate:registered', { candidate });
+    } catch (_) {}
+
     const token = generateCandidateToken(candidate);
 
     res.status(201).json({
@@ -219,6 +225,10 @@ router.get('/candidate-session/:candidateId', async (req, res) => {
     if (!startedAt) {
       startedAt = new Date();
       await Candidate.findByIdAndUpdate(candidate._id, { startedAt });
+      try {
+        const io = getIO();
+        io.to('admin').emit('candidate:status', { candidateId: candidate._id.toString(), startedAt });
+      } catch (_) {}
     }
 
     const duration = session.duration; // total duration in seconds
@@ -247,6 +257,10 @@ router.delete('/cleanup/:candidateId', async (req, res) => {
       const submitted = await Result.findOne({ candidate: candidate._id });
       if (!submitted) {
         await Candidate.findByIdAndDelete(candidate._id);
+        try {
+          const io = getIO();
+          io.to('admin').emit('candidate:deleted', { candidateId: candidate._id.toString() });
+        } catch (_) {}
       }
     }
     res.json({ message: 'Candidate cleaned up.' });
@@ -337,6 +351,10 @@ router.post('/submit', async (req, res) => {
 
     // Mark candidate as submitted
     await Candidate.findByIdAndUpdate(candidateId, { hasSubmitted: true });
+    try {
+      const io = getIO();
+      io.to('admin').emit('candidate:status', { candidateId: candidateId.toString(), hasSubmitted: true });
+    } catch (_) {}
 
     // Emit live result to admin room (only admin views candidate marks)
     try {

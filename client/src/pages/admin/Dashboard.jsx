@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getStats } from '../../api';
+import { getSocket } from '../../socket';
 import useExamStore from '../../stores/examStore';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -21,12 +23,23 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const { sessions, liveResults } = useExamStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
     getStats()
       .then(({ data }) => setStats(data))
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    const socket = getSocket();
+    const handleCandidateRegistered = () => {
+      setStats((prev) => (prev ? { ...prev, totalCandidates: (prev.totalCandidates || 0) + 1 } : prev));
+    };
+
+    socket.on('candidate:registered', handleCandidateRegistered);
+    return () => {
+      socket.off('candidate:registered', handleCandidateRegistered);
+    };
   }, [liveResults.length]);
 
   const activeCount = Object.values(sessions).filter((s) => s.status === 'active').length;
@@ -69,6 +82,8 @@ export default function Dashboard() {
               label="Total Candidates"
               value={stats?.totalCandidates || 0}
               color="purple"
+              onClick={() => navigate('/admin/candidates')}
+              subtitle="View live registered students →"
             />
             <StatCard
               icon="📋"
@@ -213,7 +228,7 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ icon, label, value, color, pulse }) {
+function StatCard({ icon, label, value, color, pulse, onClick, subtitle }) {
   const colorMap = {
     purple: 'from-primary-500/20 to-primary-600/10 border-primary-500/20 text-primary-300',
     cyan: 'from-accent-500/20 to-accent-500/10 border-accent-500/20 text-accent-300',
@@ -222,11 +237,21 @@ function StatCard({ icon, label, value, color, pulse }) {
     gray: 'from-slate-500/10 to-slate-600/5 border-slate-500/20 text-slate-400',
   };
   return (
-    <div className={`glass-card p-5 bg-gradient-to-br ${colorMap[color]} border`}>
+    <div
+      onClick={onClick}
+      className={`glass-card p-5 bg-gradient-to-br ${colorMap[color]} border ${
+        onClick ? 'cursor-pointer hover:border-primary-500/50 hover:scale-[1.02] transition-all' : ''
+      }`}
+    >
       <div className="flex items-start justify-between">
         <div>
           <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">{label}</p>
           <p className="text-3xl font-bold text-white">{value}</p>
+          {subtitle && (
+            <p className="text-primary-300 text-[11px] font-medium mt-1.5 flex items-center gap-1">
+              {subtitle}
+            </p>
+          )}
         </div>
         <span className={`text-2xl ${pulse ? 'animate-pulse' : ''}`}>{icon}</span>
       </div>

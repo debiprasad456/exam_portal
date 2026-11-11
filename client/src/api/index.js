@@ -48,6 +48,11 @@ export const getResults = (subject = '') =>
 export const deleteResult = (id) => api.delete(`/admin/results/${id}`);
 export const getStats = () => api.get('/admin/stats');
 
+// ─── Admin: Candidates ───
+export const getCandidates = (subject = '') =>
+  api.get('/admin/candidates', { params: subject ? { subject } : {} });
+export const deleteCandidate = (id) => api.delete(`/admin/candidates/${id}`);
+
 // ─── Admin: Email & SMTP ───
 export const getSmtpStatus = () => api.get('/admin/email/status');
 export const testSmtpConnection = (toEmail) => api.post('/admin/email/test', { toEmail });
