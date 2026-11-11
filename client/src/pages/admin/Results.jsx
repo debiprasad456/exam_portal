@@ -55,9 +55,8 @@ export default function Results() {
 
   const toggleExpand = (id) => setExpanded((prev) => (prev === id ? null : id));
 
-  const getScoreColor = (pct) => {
-    if (pct >= 80) return 'text-emerald-400';
-    if (pct >= 50) return 'text-amber-400';
+  const getScoreColor = (score) => {
+    if (score >= 22) return 'text-emerald-400';
     return 'text-red-400';
   };
 
@@ -308,7 +307,7 @@ export default function Results() {
               const subj = SUBJECTS.find((s) => s.value === result.subject);
               const isExpanded = expanded === result._id;
               const pct = result.percentage || 0;
-              const isPassed = (result.score || 0) >= 12;
+              const isPassed = (result.score || 0) >= 22;
               const submissionTime = result.createdAt || result.candidate?.createdAt;
               const { date: subDate, time: subClock } = formatDateTime(submissionTime);
 
@@ -375,7 +374,7 @@ export default function Results() {
                         {isPassed ? 'Passed' : 'Failed'}
                       </span>
                       <div className="text-right">
-                        <p className={`text-lg sm:text-xl font-bold ${getScoreColor(pct)}`}>{pct}%</p>
+                        <p className={`text-lg sm:text-xl font-bold ${getScoreColor(result.score || 0)}`}>{pct}%</p>
                         <p className="text-slate-500 text-xs">{result.score}/{result.totalQuestions} correct</p>
                       </div>
 

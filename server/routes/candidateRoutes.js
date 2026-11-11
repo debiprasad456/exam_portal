@@ -6,7 +6,6 @@ const Question = require('../models/Question');
 const Result = require('../models/Result');
 const ExamSession = require('../models/ExamSession');
 const { getIO } = require('../socket/ioInstance');
-const emailService = require('../services/emailService');
 
 const generateCandidateToken = (candidate) => {
   return jwt.sign(

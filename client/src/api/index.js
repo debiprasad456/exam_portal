@@ -56,8 +56,6 @@ export const deleteCandidate = (id) => api.delete(`/admin/candidates/${id}`);
 // ─── Admin: Email & SMTP ───
 export const getSmtpStatus = () => api.get('/admin/email/status');
 export const testSmtpConnection = (toEmail) => api.post('/admin/email/test', { toEmail });
-export const sendResultEmail = (id) => api.post(`/admin/email/send-result/${id}`);
-export const sendBulkResultEmails = (resultIds) => api.post('/admin/email/send-results-bulk', { resultIds });
 
 // ─── Candidate ───
 export const registerCandidate = (data) => api.post('/candidate/register', data);

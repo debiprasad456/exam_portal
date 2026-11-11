@@ -227,7 +227,7 @@ const sendTestEmail = async (targetEmail) => {
                     <div style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 24px; text-align: center;">
                       <span style="font-size: 28px; display: block; margin-bottom: 6px;">🎉</span>
                       <strong style="color: #34d399; font-size: 16px; display: block;">SMTP Connection Successful!</strong>
-                      <span style="color: #cbd5e1; font-size: 13px;">Your email configuration is operational and ready to send scorecards and notifications.</span>
+                      <span style="color: #cbd5e1; font-size: 13px;">Your email configuration is operational and ready to send admin notifications.</span>
                     </div>
 
                     <table width="100%" cellpadding="8" cellspacing="0" style="background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); font-size: 13px; margin-bottom: 24px;">
@@ -275,167 +275,6 @@ const sendTestEmail = async (targetEmail) => {
     html: mailOptions.html,
   });
   return info;
-};
-
-/**
- * Send candidate exam scorecard / result email
- */
-const sendExamResultEmail = async ({ candidate, result, subjectTitle }) => {
-  if (!isConfigured()) {
-    console.warn('⚠️ Email service not configured. Skipping exam result email.');
-    return { sent: false, reason: 'Email service not configured' };
-  }
-
-  const recipientEmail = candidate.email;
-  const candidateName = candidate.name || 'Candidate';
-  const displaySubject = subjectTitle || getSubjectName(candidate.subject || result.subject);
-
-  const score = typeof result.score === 'number' ? result.score : 0;
-  const totalQuestions = typeof result.totalQuestions === 'number' ? result.totalQuestions : 0;
-  const percentage = typeof result.percentage === 'number' ? result.percentage : (totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0);
-
-  const isPassed = percentage >= 50;
-  const statusBadgeColor = isPassed ? '#10b981' : '#f59e0b';
-  const statusBadgeBg = isPassed ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)';
-  const statusBadgeText = isPassed ? 'PASSED' : 'NEEDS IMPROVEMENT';
-
-  const fromName = process.env.SMTP_FROM_NAME || 'Diverse Solutions Exam Portal';
-  const fromEmail = (process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || '').trim();
-
-  const formattedDate = new Date(result.createdAt || Date.now()).toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-  });
-
-  const mailOptions = {
-    from: `"${fromName}" <${fromEmail}>`,
-    to: recipientEmail,
-    subject: `Exam Scorecard: ${displaySubject} - Diverse Solutions`,
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Exam Scorecard</title>
-      </head>
-      <body style="margin: 0; padding: 0; background-color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f8fafc;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0f172a; padding: 40px 15px;">
-          <tr>
-            <td align="center">
-              <table width="100%" max-width="600" style="max-width: 600px; background: #1e293b; border-radius: 18px; border: 1px solid rgba(255, 255, 255, 0.1); overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                
-                <!-- Hero Header -->
-                <tr>
-                  <td style="padding: 36px 30px; background: linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%); text-align: center;">
-                    <div style="background: rgba(255,255,255,0.2); display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; letter-spacing: 1px; color: #ffffff; text-transform: uppercase; margin-bottom: 12px; backdrop-filter: blur(4px);">
-                      Official Examination Scorecard
-                    </div>
-                    <h1 style="margin: 0; color: #ffffff; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">Diverse Solutions</h1>
-                    <p style="margin: 6px 0 0 0; color: rgba(255,255,255,0.9); font-size: 15px; font-weight: 500;">
-                      ${displaySubject} Assessment
-                    </p>
-                  </td>
-                </tr>
-
-                <!-- Content Body -->
-                <tr>
-                  <td style="padding: 36px 30px;">
-                    <p style="margin: 0 0 20px 0; font-size: 16px; color: #f1f5f9; line-height: 1.5;">
-                      Dear <strong style="color: #ffffff;">${candidateName}</strong>,
-                    </p>
-                    <p style="margin: 0 0 28px 0; font-size: 14px; color: #94a3b8; line-height: 1.6;">
-                      Thank you for completing your examination for <strong>${displaySubject}</strong>. Your answers have been graded. Below is your official performance summary:
-                    </p>
-
-                    <!-- Score Highlight Card -->
-                    <table width="100%" cellpadding="0" cellspacing="0" style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; margin-bottom: 28px; overflow: hidden;">
-                      <tr>
-                        <td align="center" style="padding: 26px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
-                          <span style="font-size: 12px; font-weight: 600; letter-spacing: 1px; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 8px;">Final Score</span>
-                          <span style="font-size: 42px; font-weight: 800; color: #ffffff; letter-spacing: -1px; line-height: 1;">
-                            ${score} <span style="font-size: 22px; color: #64748b; font-weight: 500;">/ ${totalQuestions}</span>
-                          </span>
-                          <div style="margin-top: 14px;">
-                            <span style="display: inline-block; padding: 6px 16px; border-radius: 9999px; font-size: 13px; font-weight: 700; color: ${statusBadgeColor}; background-color: ${statusBadgeBg}; border: 1px solid ${statusBadgeColor}40;">
-                              ${percentage}% — ${statusBadgeText}
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    </table>
-
-                    <!-- Candidate & Exam Details Table -->
-                    <h3 style="margin: 0 0 14px 0; font-size: 14px; font-weight: 600; color: #cbd5e1; text-transform: uppercase; letter-spacing: 0.5px;">Candidate Information</h3>
-                    <table width="100%" cellpadding="10" cellspacing="0" style="background: rgba(255,255,255,0.02); border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); font-size: 13px; margin-bottom: 28px;">
-                      <tr>
-                        <td style="color: #64748b; width: 35%; border-bottom: 1px solid rgba(255,255,255,0.04);">Candidate Name:</td>
-                        <td style="color: #f1f5f9; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.04);">${candidateName}</td>
-                      </tr>
-                      <tr>
-                        <td style="color: #64748b; border-bottom: 1px solid rgba(255,255,255,0.04);">Registered Email:</td>
-                        <td style="color: #f1f5f9; border-bottom: 1px solid rgba(255,255,255,0.04);">${recipientEmail}</td>
-                      </tr>
-                      ${candidate.phone ? `
-                      <tr>
-                        <td style="color: #64748b; border-bottom: 1px solid rgba(255,255,255,0.04);">Phone:</td>
-                        <td style="color: #f1f5f9; border-bottom: 1px solid rgba(255,255,255,0.04);">${candidate.phone}</td>
-                      </tr>` : ''}
-                      <tr>
-                        <td style="color: #64748b; border-bottom: 1px solid rgba(255,255,255,0.04);">Subject:</td>
-                        <td style="color: #60a5fa; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.04);">${displaySubject}</td>
-                      </tr>
-                      <tr>
-                        <td style="color: #64748b;">Submitted At:</td>
-                        <td style="color: #f1f5f9;">${formattedDate}</td>
-                      </tr>
-                    </table>
-
-                    <div style="background: rgba(59, 130, 246, 0.08); border-left: 3px solid #3b82f6; padding: 14px 16px; border-radius: 0 8px 8px 0; margin-bottom: 24px;">
-                      <p style="margin: 0; color: #93c5fd; font-size: 13px; line-height: 1.5;">
-                        <strong>Next Steps:</strong> Our evaluation team has recorded your scorecard. If this exam is part of a hiring or certification process, our coordinators will get in touch with you regarding the next round.
-                      </p>
-                    </div>
-
-                    <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.6;">
-                      Best regards,<br>
-                      <strong style="color: #cbd5e1;">Diverse Solutions Academic & HR Team</strong>
-                    </p>
-                  </td>
-                </tr>
-
-                <!-- Footer -->
-                <tr>
-                  <td style="padding: 24px 30px; background-color: #0f172a; text-align: center; border-top: 1px solid rgba(255,255,255,0.06);">
-                    <p style="margin: 0 0 6px 0; color: #64748b; font-size: 12px;">
-                      This is an automated examination scorecard generated by the Diverse Solutions Exam Portal.
-                    </p>
-                    <p style="margin: 0; color: #475569; font-size: 11px;">
-                      © ${new Date().getFullYear()} Diverse Solutions. All rights reserved.
-                    </p>
-                  </td>
-                </tr>
-
-              </table>
-            </td>
-          </tr>
-        </table>
-      </body>
-      </html>
-    `,
-  };
-
-  const info = await sendMailUnified({
-    to: recipientEmail,
-    subject: mailOptions.subject,
-    html: mailOptions.html,
-  });
-  console.log(`✉️ Scorecard email sent to ${recipientEmail} (MessageId: ${info.messageId})`);
-  return { sent: true, messageId: info.messageId };
 };
 
 /**
@@ -540,7 +379,6 @@ module.exports = {
   isConfigured,
   verifySMTP,
   sendTestEmail,
-  sendExamResultEmail,
   sendPasswordResetOtpEmail,
   resetTransporter,
   getSubjectName,

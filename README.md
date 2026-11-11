@@ -2,7 +2,7 @@
 
 A real-time, high-concurrency, full-stack Online Examination and Proctoring System built with **React 18**, **Vite**, **Node.js**, **Express**, **MongoDB Atlas**, **Socket.io**, and **Tailwind CSS**.
 
-Designed for educational institutions, university campus drives, corporate recruitment, and organizational assessments. The platform features an intuitive **Admin Control Center** for live exam administration and a robust **Candidate Portal** equipped with independent per-student timers, automatic evaluation, and instant official scorecard email delivery.
+Designed for educational institutions, university campus drives, corporate recruitment, and organizational assessments. The platform features an intuitive **Admin Control Center** for live exam administration and a robust **Candidate Portal** equipped with independent per-student timers, automatic evaluation, and live leaderboards.
 
 ---
 
@@ -47,7 +47,6 @@ Designed for educational institutions, university campus drives, corporate recru
 - **Candidate Registration**: Includes full name, email, phone number, subject selection, and physical address.
 - **Unassigned Questions Safeguard**: Prevents candidates from taking exams without configured questions, displaying a clean return interface and purging orphan candidate records.
 - **Auto-Submission Engine**: Automatically grades and saves candidate answers upon timer expiration or admin force-stop.
-- **Instant Official Scorecard Email**: Sends a beautifully styled HTML exam result scorecard directly to the student's email inbox upon submission.
 - **Mobile-Responsive Interface**: Fluid layout optimized for mobile screens, tablets, and desktop browsers.
 
 ---
